@@ -31,7 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Plus, Trash2, Eye, EyeOff, Upload, Camera } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, Upload, Camera } from 'lucide-react'
 
 const mockPhotos = [
   { id: '1', caption: 'Koto en el parque', category: 'walk', is_public: true, bg: 'bg-green-100' },
@@ -56,6 +56,7 @@ export default function GaleriaAdminPage() {
   const [photos, setPhotos] = useState(mockPhotos)
   const [filter, setFilter] = useState('all')
   const [openUpload, setOpenUpload] = useState(false)
+  const [editingPhoto, setEditingPhoto] = useState<(typeof mockPhotos)[0] | null>(null)
 
   const filtered = filter === 'all' ? photos : photos.filter((p) => p.category === filter)
 
@@ -70,7 +71,7 @@ export default function GaleriaAdminPage() {
   const publicCount = photos.filter((p) => p.is_public).length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Galería</h1>
@@ -80,7 +81,7 @@ export default function GaleriaAdminPage() {
         </div>
         <Dialog open={openUpload} onOpenChange={setOpenUpload}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="rounded-xl">
               <Upload className="h-4 w-4 mr-2" />
               Subir foto
             </Button>
@@ -129,11 +130,11 @@ export default function GaleriaAdminPage() {
         </Dialog>
       </div>
 
-      {/* Filter */}
+      {/* Filter (Pills made smaller and fully rounded) */}
       <div className="flex gap-2 flex-wrap">
         <Button
           variant={filter === 'all' ? 'default' : 'outline'}
-          size="sm"
+          className="h-7 px-3 text-xs rounded-full border-border/80"
           onClick={() => setFilter('all')}
         >
           Todas ({photos.length})
@@ -145,7 +146,7 @@ export default function GaleriaAdminPage() {
             <Button
               key={value}
               variant={filter === value ? 'default' : 'outline'}
-              size="sm"
+              className="h-7 px-3 text-xs rounded-full border-border/80"
               onClick={() => setFilter(value)}
             >
               {label} ({count})
@@ -158,32 +159,44 @@ export default function GaleriaAdminPage() {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {filtered.map((photo) => (
           <div key={photo.id} className="group relative">
-            <div className={`${photo.bg} rounded-xl aspect-square flex flex-col items-center justify-center`}>
+            <div className={`${photo.bg} rounded-xl aspect-square flex flex-col items-center justify-center border border-border/10 shadow-xs`}>
               <Camera className="h-8 w-8 text-muted-foreground" />
-              <p className="text-xs text-center text-muted-foreground px-2 mt-1">{photo.caption}</p>
+              <p className="text-xs text-center text-muted-foreground px-2 mt-1 font-medium">{photo.caption}</p>
             </div>
             {/* Overlay */}
             <div className="absolute inset-0 bg-black/60 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                 {categoryLabels[photo.category]}
               </Badge>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1">
+                {/* Edit Button */}
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="h-7 px-2 text-xs"
+                  className="h-7 px-2 text-xs rounded-lg"
+                  onClick={() => setEditingPhoto(photo)}
+                  title="Editar nombre y categoría"
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                {/* Visibility Toggle Button */}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 px-2 text-xs rounded-lg"
                   onClick={() => togglePublic(photo.id)}
                   title={photo.is_public ? 'Ocultar de la web' : 'Mostrar en la web'}
                 >
                   {photo.is_public ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                 </Button>
+                {/* Delete Button */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="destructive" className="h-7 px-2 text-xs">
+                    <Button size="sm" variant="destructive" className="h-7 px-2 text-xs rounded-lg">
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="rounded-xl">
                     <AlertDialogHeader>
                       <AlertDialogTitle>¿Eliminar foto?</AlertDialogTitle>
                       <AlertDialogDescription>
@@ -191,8 +204,8 @@ export default function GaleriaAdminPage() {
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => deletePhoto(photo.id)}>
+                      <AlertDialogCancel className="rounded-lg">Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deletePhoto(photo.id)} className="rounded-lg">
                         Eliminar
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -201,7 +214,7 @@ export default function GaleriaAdminPage() {
               </div>
             </div>
             {/* Public indicator */}
-            <div className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${photo.is_public ? 'bg-green-500' : 'bg-gray-400'}`} title={photo.is_public ? 'Visible en la web' : 'Oculta'} />
+            <div className={`absolute top-2 right-2 h-2 w-2 rounded-full ${photo.is_public ? 'bg-green-500' : 'bg-gray-400'}`} title={photo.is_public ? 'Visible en la web' : 'Oculta'} />
           </div>
         ))}
       </div>
@@ -212,6 +225,56 @@ export default function GaleriaAdminPage() {
           <p>No hay fotos en esta categoría</p>
         </div>
       )}
+
+      {/* Edit Photo Dialog */}
+      <Dialog open={!!editingPhoto} onOpenChange={(o) => !o && setEditingPhoto(null)}>
+        <DialogContent className="max-w-sm rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Editar detalles de la foto</DialogTitle>
+          </DialogHeader>
+          {editingPhoto && (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-caption">Descripción de la foto</Label>
+                <Input
+                  id="edit-caption"
+                  value={editingPhoto.caption}
+                  onChange={(e) => setEditingPhoto((prev) => prev ? { ...prev, caption: e.target.value } : null)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-category">Categoría</Label>
+                <Select
+                  value={editingPhoto.category}
+                  onValueChange={(val) => setEditingPhoto((prev) => prev ? { ...prev, category: val || 'general' } : null)}
+                >
+                  <SelectTrigger id="edit-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(categoryLabels).map(([v, l]) => (
+                      <SelectItem key={v} value={v}>{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setEditingPhoto(null)}>Cancelar</Button>
+                <Button
+                  onClick={() => {
+                    setPhotos((prev) =>
+                      prev.map((p) => (p.id === editingPhoto.id ? editingPhoto : p))
+                    )
+                    setEditingPhoto(null)
+                  }}
+                >
+                  Guardar cambios
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
