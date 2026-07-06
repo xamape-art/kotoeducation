@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Menu, X, PawPrint } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
@@ -21,12 +22,28 @@ export default function Navbar() {
   const pathname = usePathname()
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur-md">
+      <div className="max-w-6xl mx-auto px-4 h-18 flex items-center justify-between py-3">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-bold text-lg text-primary">
-          <PawPrint className="h-6 w-6" />
-          <span>Koto Education</span>
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative w-11 h-11 overflow-hidden rounded-lg ring-1 ring-border/50 group-hover:ring-primary/30 transition-all">
+            <Image
+              src="/logo.png"
+              alt="Koto Education"
+              fill
+              className="object-cover"
+              sizes="44px"
+              priority
+            />
+          </div>
+          <div className="hidden sm:block">
+            <span className="font-display font-bold text-lg text-foreground tracking-tight leading-none block">
+              Koto Education
+            </span>
+            <span className="text-[11px] text-muted-foreground tracking-widest uppercase">
+              Terrassa
+            </span>
+          </div>
         </Link>
 
         {/* Desktop nav */}
@@ -36,10 +53,10 @@ export default function Navbar() {
               key={link.href}
               href={link.href}
               className={cn(
-                'px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
                 pathname === link.href
-                  ? 'text-primary bg-secondary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                  ? 'text-primary bg-secondary font-semibold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/70'
               )}
             >
               {link.label}
@@ -49,7 +66,7 @@ export default function Navbar() {
 
         {/* CTA button */}
         <div className="hidden md:block">
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="rounded-full px-5">
             <Link href="/contacto">Solicitar cita</Link>
           </Button>
         </div>
@@ -57,33 +74,38 @@ export default function Navbar() {
         {/* Mobile menu */}
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="rounded-lg">
               <Menu className="h-5 w-5" />
               <span className="sr-only">Abrir menú</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-72">
-            <div className="flex items-center gap-2 font-bold text-lg text-primary mb-8">
-              <PawPrint className="h-6 w-6" />
-              <span>Koto Education</span>
-            </div>
-            <nav className="flex flex-col gap-2">
+            <Link href="/" onClick={() => setOpen(false)} className="flex items-center gap-3 mb-8">
+              <div className="relative w-10 h-10 overflow-hidden rounded-lg ring-1 ring-border">
+                <Image src="/logo.png" alt="Koto Education" fill className="object-cover" sizes="40px" />
+              </div>
+              <div>
+                <span className="font-display font-bold text-base text-foreground block">Koto Education</span>
+                <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Terrassa</span>
+              </div>
+            </Link>
+            <nav className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setOpen(false)}
                   className={cn(
-                    'px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                    'px-4 py-2.5 text-sm font-medium rounded-lg transition-colors',
                     pathname === link.href
-                      ? 'text-primary bg-secondary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+                      ? 'text-primary bg-secondary font-semibold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/70'
                   )}
                 >
                   {link.label}
                 </Link>
               ))}
-              <Button asChild className="mt-4">
+              <Button asChild className="mt-4 rounded-full">
                 <Link href="/contacto" onClick={() => setOpen(false)}>
                   Solicitar cita
                 </Link>
