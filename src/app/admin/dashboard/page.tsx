@@ -239,8 +239,8 @@ export default function DashboardPage() {
         {/* Revenue chart */}
         <Card className="xl:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 font-display text-lg">
-              <TrendingUp className="h-4 w-4" />
+            <CardTitle className="flex items-center gap-2 font-display text-lg text-emerald-700">
+              <TrendingUp className="h-4 w-4 text-emerald-700" />
               Ingresos últimos 6 meses
             </CardTitle>
           </CardHeader>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}€`} />
                 <Tooltip formatter={(v) => [`${v}€`, 'Ingresos']} />
-                <Bar dataKey="ingresos" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

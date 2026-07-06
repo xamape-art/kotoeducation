@@ -477,7 +477,28 @@ export default function ContabilidadPage() {
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}€`} />
               <Tooltip formatter={(v) => [`${v}€`]} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Legend content={(props) => {
+                const { payload } = props
+                if (!payload) return null
+                const sortedPayload = [...payload].sort((a, b) => {
+                  if (a.value === 'Ingresos') return -1
+                  if (b.value === 'Ingresos') return 1
+                  return 0
+                })
+                return (
+                  <div className="flex justify-center gap-4 text-[11px] mt-2">
+                    {sortedPayload.map((entry: any, index: number) => (
+                      <div key={`item-${index}`} className="flex items-center gap-1.5">
+                        <span 
+                          className="w-3 h-1.5 rounded-sm shrink-0" 
+                          style={{ backgroundColor: entry.color }} 
+                        />
+                        <span className="text-muted-foreground font-medium">{entry.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              }} />
               <Bar dataKey="ingresos" name="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
               <Bar dataKey="gastos" name="Gastos" fill="var(--destructive)" radius={[4, 4, 0, 0]} />
             </BarChart>
