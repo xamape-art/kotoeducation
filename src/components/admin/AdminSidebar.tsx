@@ -37,7 +37,7 @@ export default function AdminSidebar() {
   }
 
   return (
-    <aside className="flex flex-col w-64 shrink-0 bg-sidebar text-sidebar-foreground h-screen sticky top-0 overflow-y-auto">
+    <aside className="hidden md:flex flex-col w-64 shrink-0 bg-sidebar text-sidebar-foreground h-screen sticky top-0 overflow-y-auto">
       {/* Logo */}
       <div className="flex items-center gap-2 px-6 py-5 border-b border-sidebar-border">
         <PawPrint className="h-6 w-6" />
