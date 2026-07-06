@@ -39,9 +39,14 @@ export default function AdminSidebar() {
   return (
     <aside className="flex flex-col w-64 shrink-0 bg-sidebar text-sidebar-foreground min-h-screen">
       {/* Logo */}
-      <div className="flex items-center gap-2 font-bold text-lg px-6 py-5 border-b border-sidebar-border">
+      <div className="flex items-center gap-2 px-6 py-5 border-b border-sidebar-border">
         <PawPrint className="h-6 w-6" />
-        <span>Koto Admin</span>
+        <div>
+          <span className="block font-display text-xl font-bold tracking-tight">Koto Admin</span>
+          <span className="block text-[10px] uppercase tracking-[0.24em] text-sidebar-foreground/60">
+            Gestión
+          </span>
+        </div>
       </div>
 
       {/* Navigation */}

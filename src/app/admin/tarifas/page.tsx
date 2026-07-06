@@ -58,7 +58,7 @@ export default function TarifasPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Tarifas</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Tarifas</h1>
           <p className="text-muted-foreground text-sm">{rates.filter(r => r.active).length} servicios activos</p>
         </div>
         <Dialog open={openAdd} onOpenChange={setOpenAdd}>
@@ -111,7 +111,7 @@ export default function TarifasPage() {
         <div key={category}>
           <div className="flex items-center gap-2 mb-3">
             <Tag className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold">{category}</h2>
+            <h2 className="font-display text-xl font-semibold tracking-tight">{category}</h2>
           </div>
           <div className="space-y-2">
             {rates.filter((r) => r.category === category).map((rate) => (

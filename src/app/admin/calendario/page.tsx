@@ -79,7 +79,7 @@ export default function CalendarioPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Calendario</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Calendario</h1>
           <p className="text-muted-foreground text-sm">
             {format(currentMonth, 'MMMM yyyy', { locale: es })}
           </p>
@@ -211,7 +211,7 @@ export default function CalendarioPage() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <CardTitle className="text-lg capitalize">
+              <CardTitle className="font-display text-2xl capitalize">
                 {format(currentMonth, 'MMMM yyyy', { locale: es })}
               </CardTitle>
               <div className="flex items-center gap-2">
@@ -306,7 +306,7 @@ export default function CalendarioPage() {
         {/* Day detail */}
         <Card className="shadow-sm lg:sticky lg:top-24 h-fit">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">
+            <CardTitle className="font-display text-xl capitalize">
               {selectedDay
                 ? format(selectedDay, "EEEE d 'de' MMMM", { locale: es })
                 : 'Selecciona un día'}

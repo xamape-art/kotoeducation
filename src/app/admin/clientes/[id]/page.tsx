@@ -65,7 +65,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-xl font-bold">{mockClient.name}</h1>
+            <h1 className="font-display text-3xl font-bold tracking-tight">{mockClient.name}</h1>
             <p className="text-muted-foreground text-sm">Cliente desde {mockClient.createdAt}</p>
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           {mockPets.map((pet) => (
             <Card key={pet.id}>
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
+                <CardTitle className="flex items-center gap-2 font-display text-lg">
                   <Dog className="h-4 w-4 text-primary" />
                   {pet.name}
                   <Badge variant="outline" className="text-xs">{pet.breed}</Badge>

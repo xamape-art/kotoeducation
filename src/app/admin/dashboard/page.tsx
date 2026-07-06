@@ -60,7 +60,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="font-display text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground capitalize">{today}</p>
       </div>
 
@@ -112,7 +112,7 @@ export default function DashboardPage() {
         {/* Revenue chart */}
         <Card className="xl:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
+            <CardTitle className="flex items-center gap-2 font-display text-lg">
               <TrendingUp className="h-4 w-4" />
               Ingresos últimos 6 meses
             </CardTitle>
@@ -133,7 +133,7 @@ export default function DashboardPage() {
         {/* Upcoming appointments */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center justify-between text-base">
+            <CardTitle className="flex items-center justify-between font-display text-lg">
               <div className="flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
                 Citas de hoy
@@ -166,7 +166,7 @@ export default function DashboardPage() {
       {/* Recent contact requests */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center justify-between text-base">
+          <CardTitle className="flex items-center justify-between font-display text-lg">
             <div className="flex items-center gap-2">
               <MessageSquare className="h-4 w-4" />
               Solicitudes de contacto recientes
@@ -200,7 +200,7 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 font-display text-lg">
             <CheckCircle2 className="h-4 w-4" />
             Acciones rápidas
           </CardTitle>

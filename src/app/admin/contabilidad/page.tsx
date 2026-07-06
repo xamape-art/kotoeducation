@@ -82,7 +82,7 @@ export default function ContabilidadPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Contabilidad</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Contabilidad</h1>
           <p className="text-muted-foreground text-sm">Julio 2025</p>
         </div>
         <div className="flex gap-2">
@@ -259,7 +259,7 @@ export default function ContabilidadPage() {
         <TabsContent value="resumen" className="mt-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Ingresos vs Gastos (2025)</CardTitle>
+              <CardTitle className="font-display text-lg">Ingresos vs Gastos (2025)</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>

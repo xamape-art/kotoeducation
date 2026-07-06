@@ -81,7 +81,7 @@ export default function ClientesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Clientes</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground text-sm">{mockClients.length} clientes registrados</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>

@@ -16,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 border-b bg-background px-6 flex items-center justify-between shrink-0">
           <div className="text-sm text-muted-foreground">
-            Panel de administración
+            <span className="font-display text-base text-foreground">Panel de administración</span>
           </div>
           <div className="text-sm text-muted-foreground">
             {user.email}
