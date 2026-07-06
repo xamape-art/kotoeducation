@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -125,7 +124,8 @@ export default function ContabilidadPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-5xl">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Contabilidad</h1>
@@ -134,7 +134,7 @@ export default function ContabilidadPage() {
         <div className="flex gap-2">
           <Dialog open={incomeOpen} onOpenChange={setIncomeOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white">
+              <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl">
                 <Plus className="h-4 w-4 mr-1" />
                 Ingreso
               </Button>
@@ -173,7 +173,7 @@ export default function ContabilidadPage() {
 
           <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/10 text-destructive">
+              <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/10 text-destructive rounded-xl">
                 <Plus className="h-4 w-4 mr-1" />
                 Gasto
               </Button>
@@ -246,96 +246,100 @@ export default function ContabilidadPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="ingresos">
-        <TabsList>
-          <TabsTrigger value="ingresos">Ingresos</TabsTrigger>
-          <TabsTrigger value="gastos">Gastos</TabsTrigger>
-          <TabsTrigger value="resumen">Resumen anual</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="ingresos" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {incomeList.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 p-4 text-sm">
-                    <div className="text-muted-foreground w-24 shrink-0">{item.date}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium">{item.description}</p>
-                    </div>
-                    <Badge className={`text-xs ${methodColor[item.method]}`} variant="outline">
-                      {methodLabel[item.method]}
-                    </Badge>
-                    <span className="font-semibold text-emerald-700 w-16 text-right">+{item.amount}€</span>
+      {/* Grid Side-by-Side: Ingresos vs Gastos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Income Card */}
+        <Card className="border border-border/60 shadow-sm flex flex-col justify-between">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-base font-semibold flex items-center gap-2 text-emerald-750">
+              <TrendingUp className="h-4.5 w-4.5 text-emerald-700" />
+              Ingresos recientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 flex-1">
+            <div className="divide-y max-h-[350px] overflow-y-auto">
+              {incomeList.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 p-3.5 text-xs">
+                  <div className="text-muted-foreground w-20 shrink-0">{item.date}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate font-medium">{item.description}</p>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  <Badge className={`text-[10px] py-0 px-1.5 font-normal ${methodColor[item.method]}`} variant="outline">
+                    {methodLabel[item.method]}
+                  </Badge>
+                  <span className="font-semibold text-emerald-700 w-16 text-right">+{item.amount}€</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="gastos" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              <div className="divide-y">
-                {expenseList.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 p-4 text-sm">
-                    <div className="text-muted-foreground w-24 shrink-0">{item.date}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium">{item.description}</p>
-                    </div>
-                    <Badge variant="outline" className="text-xs border-muted-foreground/20 text-muted-foreground">{item.category}</Badge>
-                    <span className="font-semibold text-destructive w-16 text-right">-{item.amount}€</span>
+        {/* Expenses Card */}
+        <Card className="border border-border/60 shadow-sm flex flex-col justify-between">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-base font-semibold flex items-center gap-2 text-destructive">
+              <TrendingDown className="h-4.5 w-4.5" />
+              Gastos recientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 flex-1">
+            <div className="divide-y max-h-[350px] overflow-y-auto">
+              {expenseList.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 p-3.5 text-xs">
+                  <div className="text-muted-foreground w-20 shrink-0">{item.date}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate font-medium">{item.description}</p>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal border-muted-foreground/20 text-muted-foreground">{item.category}</Badge>
+                  <span className="font-semibold text-destructive w-16 text-right">-{item.amount}€</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        <TabsContent value="resumen" className="mt-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="font-display text-lg">Ingresos vs Gastos (2025)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}€`} />
-                  <Tooltip formatter={(v) => [`${v}€`]} />
-                  <Legend />
-                  <Bar dataKey="ingresos" name="Ingresos" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="gastos" name="Gastos" fill="var(--destructive)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+      {/* Row 3: Annual Summary Chart */}
+      <Card className="border border-border/60 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-display text-base font-semibold">Resumen anual: Ingresos vs Gastos (2025)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}€`} />
+              <Tooltip formatter={(v) => [`${v}€`]} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="ingresos" name="Ingresos" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="gastos" name="Gastos" fill="var(--destructive)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
 
-              {/* Annual totals */}
-              <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t text-center">
-                <div>
-                  <p className="text-2xl font-bold text-emerald-700">
-                    {monthlyData.reduce((s, m) => s + m.ingresos, 0)}€
-                  </p>
-                  <p className="text-xs text-muted-foreground">Total ingresos</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-destructive">
-                    {monthlyData.reduce((s, m) => s + m.gastos, 0).toFixed(1)}€
-                  </p>
-                  <p className="text-xs text-muted-foreground">Total gastos</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-primary">
-                    {(monthlyData.reduce((s, m) => s + m.ingresos, 0) - monthlyData.reduce((s, m) => s + m.gastos, 0)).toFixed(1)}€
-                  </p>
-                  <p className="text-xs text-muted-foreground">Beneficio neto</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          {/* Annual totals footer */}
+          <div className="grid grid-cols-3 gap-4 mt-5 pt-4 border-t text-center">
+            <div>
+              <p className="text-xl font-bold text-emerald-700">
+                {monthlyData.reduce((s, m) => s + m.ingresos, 0)}€
+              </p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Total ingresos</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-destructive">
+                {monthlyData.reduce((s, m) => s + m.gastos, 0).toFixed(1)}€
+              </p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Total gastos</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-primary">
+                {(monthlyData.reduce((s, m) => s + m.ingresos, 0) - monthlyData.reduce((s, m) => s + m.gastos, 0)).toFixed(1)}€
+              </p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Beneficio neto</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
