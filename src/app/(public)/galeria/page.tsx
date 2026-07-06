@@ -32,7 +32,7 @@ export default function GaleriaPage() {
     <div className="max-w-5xl mx-auto px-4 py-16">
       <div className="text-center mb-12">
         <Badge className="mb-4">Galería</Badge>
-        <h1 className="text-4xl font-bold mb-4">Momentos especiales 📸</h1>
+        <h1 className="text-4xl font-display font-bold mb-4">Momentos especiales 📸</h1>
         <p className="text-muted-foreground max-w-xl mx-auto">
           Cada paseo y cuidado es una aventura única. Aquí comparto algunos de los
           mejores momentos con mis peludos clientes.
@@ -73,7 +73,7 @@ export default function GaleriaPage() {
       </div>
 
       <div className="text-center mt-10">
-        <h2 className="text-2xl font-bold mb-3">¿Te gustaría que cuidara a tu mascota?</h2>
+        <h2 className="text-2xl font-display font-bold mb-3">¿Te gustaría que cuidara a tu mascota?</h2>
         <Button asChild size="lg">
           <Link href="/contacto">Solicitar cita</Link>
         </Button>

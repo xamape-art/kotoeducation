@@ -15,7 +15,7 @@ export default function SobreMiPage() {
       {/* Header */}
       <div className="text-center mb-16">
         <Badge className="mb-4">Sobre mí</Badge>
-        <h1 className="text-4xl font-bold mb-4">Hola, soy Carla 🐾</h1>
+        <h1 className="text-4xl font-display font-bold mb-4">Hola, soy Carla 🐾</h1>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
           Paseadora y cuidadora de mascotas en Terrassa. Me apasiona el bienestar animal
           y me formo continuamente para dar el mejor servicio posible.
@@ -31,7 +31,7 @@ export default function SobreMiPage() {
           </div>
         </div>
         <div>
-          <h2 className="text-2xl font-bold mb-4">Mi historia</h2>
+          <h2 className="text-2xl font-display font-bold mb-4">Mi historia</h2>
           <p className="text-muted-foreground mb-4 leading-relaxed">
             Llevo más de 3 años dedicándome al cuidado y paseo de mascotas en Terrassa.
             Todo empezó con Koto, mi galgo español, que me enseñó lo importante que es
@@ -53,7 +53,7 @@ export default function SobreMiPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
         <Card>
           <CardContent className="p-6">
-            <h3 className="font-bold text-lg mb-4">Comunicación</h3>
+            <h3 className="font-display font-bold text-lg mb-4">Comunicación</h3>
             <ul className="space-y-3">
               {[
                 'Índice de respuesta del 100%',
@@ -71,7 +71,7 @@ export default function SobreMiPage() {
         </Card>
         <Card>
           <CardContent className="p-6">
-            <h3 className="font-bold text-lg mb-4">Cuidado animal</h3>
+            <h3 className="font-display font-bold text-lg mb-4">Cuidado animal</h3>
             <ul className="space-y-3">
               {[
                 '3+ años de experiencia',
@@ -93,7 +93,7 @@ export default function SobreMiPage() {
 
       {/* Pets accepted */}
       <div className="bg-secondary/40 rounded-2xl p-8 mb-16">
-        <h2 className="text-2xl font-bold mb-6">Mascotas que cuido</h2>
+        <h2 className="text-2xl font-display font-bold mb-6">Mascotas que cuido</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { icon: Dog, label: 'Perros 0–7 kg' },
@@ -119,7 +119,7 @@ export default function SobreMiPage() {
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-3">
               <Clock className="h-5 w-5 text-primary" />
-              <h3 className="font-bold">Disponibilidad</h3>
+              <h3 className="font-display font-bold">Disponibilidad</h3>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Actualmente tengo disponibilidad prácticamente diaria, tanto entre semana
@@ -132,7 +132,7 @@ export default function SobreMiPage() {
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-3">
               <MapPin className="h-5 w-5 text-primary" />
-              <h3 className="font-bold">Zona de trabajo</h3>
+              <h3 className="font-display font-bold">Zona de trabajo</h3>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Me centro principalmente en Terrassa y los barrios circundantes. Consulta
@@ -155,7 +155,7 @@ export default function SobreMiPage() {
 
       {/* CTA */}
       <div className="text-center bg-primary text-primary-foreground rounded-2xl p-10">
-        <h2 className="text-2xl font-bold mb-3">¿Quieres que cuide a tu mascota?</h2>
+        <h2 className="text-2xl font-display font-bold mb-3">¿Quieres que cuide a tu mascota?</h2>
         <p className="text-primary-foreground/80 mb-6">
           Contáctame para una primera toma de contacto sin compromiso.
         </p>

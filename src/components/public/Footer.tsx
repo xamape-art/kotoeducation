@@ -15,12 +15,12 @@ export default function Footer() {
               </div>
               <div>
                 <span
-                  className="font-display font-bold text-base block"
+                  className="font-display font-medium text-base block mb-0.5"
                   style={{ color: '#F5EDE3' }}
                 >
                   Koto Education
                 </span>
-                <span className="text-[10px] tracking-widest uppercase" style={{ color: '#C47A35' }}>
+                <span className="text-[9px] tracking-[0.2em] uppercase font-light block" style={{ color: '#C47A35' }}>
                   Terrassa
                 </span>
               </div>

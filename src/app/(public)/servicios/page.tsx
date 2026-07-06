@@ -125,7 +125,7 @@ export default function ServiciosPage() {
     <div className="max-w-5xl mx-auto px-4 py-16">
       <div className="text-center mb-16">
         <Badge className="mb-4">Servicios y Tarifas</Badge>
-        <h1 className="text-4xl font-bold mb-4">¿En qué puedo ayudarte?</h1>
+        <h1 className="text-4xl font-display font-bold mb-4">¿En qué puedo ayudarte?</h1>
         <p className="text-muted-foreground max-w-xl mx-auto">
           Servicios adaptados a las necesidades de cada mascota y propietario.
           Todos los precios son transparentes, sin sorpresas.
@@ -140,7 +140,7 @@ export default function ServiciosPage() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-3xl">{s.emoji}</span>
-                  <CardTitle className="text-lg">{s.title}</CardTitle>
+                  <CardTitle className="font-display text-lg font-semibold">{s.title}</CardTitle>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-primary">{s.price}</div>
@@ -183,7 +183,7 @@ export default function ServiciosPage() {
       <div className="bg-secondary/50 rounded-2xl p-8 mb-16 flex flex-col sm:flex-row items-center gap-6">
         <Clock className="h-12 w-12 text-primary shrink-0" />
         <div>
-          <h2 className="text-xl font-bold mb-2">Disponibilidad</h2>
+          <h2 className="text-xl font-display font-bold mb-2">Disponibilidad</h2>
           <p className="text-muted-foreground">
             Disponibilidad prácticamente diaria, entre semana y fines de semana.
             Contacta para confirmar disponibilidad en tu fecha.
@@ -198,7 +198,7 @@ export default function ServiciosPage() {
       <div>
         <div className="flex items-center gap-3 mb-8">
           <HelpCircle className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold">Preguntas frecuentes</h2>
+          <h2 className="text-2xl font-display font-bold">Preguntas frecuentes</h2>
         </div>
         <Accordion multiple={false} className="space-y-2">
           {faqs.map((faq, i) => (

@@ -13,7 +13,7 @@ export default function ContactoPage() {
     <div className="max-w-5xl mx-auto px-4 py-16">
       <div className="text-center mb-12">
         <Badge className="mb-4">Contacto</Badge>
-        <h1 className="text-4xl font-bold mb-4">¿Hablamos? 🐾</h1>
+        <h1 className="text-4xl font-display font-bold mb-4">¿Hablamos? 🐾</h1>
         <p className="text-muted-foreground max-w-xl mx-auto">
           Rellena el formulario y te responderé lo antes posible, normalmente en minutos.
           También puedes escribirme directamente por WhatsApp.
@@ -25,7 +25,7 @@ export default function ContactoPage() {
         <div className="space-y-4">
           <Card>
             <CardContent className="p-5 space-y-4">
-              <h2 className="font-semibold text-lg">Información de contacto</h2>
+              <h2 className="font-display font-semibold text-lg">Información de contacto</h2>
 
               <div className="flex items-start gap-3 text-sm">
                 <MapPin className="h-4 w-4 text-primary mt-0.5 shrink-0" />
