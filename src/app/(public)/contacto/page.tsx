@@ -39,8 +39,8 @@ export default function ContactoPage() {
                 <Phone className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Teléfono / WhatsApp</p>
-                  <a href="tel:+34600000000" className="text-muted-foreground hover:text-foreground">
-                    +34 600 000 000
+                  <a href="tel:+34638237198" className="text-muted-foreground hover:text-foreground">
+                    +34 638 237 198
                   </a>
                 </div>
               </div>
@@ -49,8 +49,8 @@ export default function ContactoPage() {
                 <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Email</p>
-                  <a href="mailto:hola@kotoeducation.com" className="text-muted-foreground hover:text-foreground">
-                    hola@kotoeducation.com
+                  <a href="mailto:carmarcap@gmail.com" className="text-muted-foreground hover:text-foreground">
+                    carmarcap@gmail.com
                   </a>
                 </div>
               </div>
@@ -99,7 +99,7 @@ export default function ContactoPage() {
                     ¡También puedes escribirme directamente!
                   </p>
                   <a
-                    href="https://wa.me/34600000000"
+                    href="https://wa.me/34638237198"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-block mt-2 text-primary font-medium hover:underline"

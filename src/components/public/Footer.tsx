@@ -67,14 +67,14 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="h-4 w-4 shrink-0" style={{ color: '#C47A35' }} />
-                <a href="tel:+34600000000" className="hover:text-[#F5EDE3] transition-colors">
-                  +34 600 000 000
+                <a href="tel:+34638237198" className="hover:text-[#F5EDE3] transition-colors">
+                  +34 638 237 198
                 </a>
               </li>
               <li className="flex items-center gap-2.5">
                 <Mail className="h-4 w-4 shrink-0" style={{ color: '#C47A35' }} />
-                <a href="mailto:hola@kotoeducation.com" className="hover:text-[#F5EDE3] transition-colors">
-                  hola@kotoeducation.com
+                <a href="mailto:carmarcap@gmail.com" className="hover:text-[#F5EDE3] transition-colors">
+                  carmarcap@gmail.com
                 </a>
               </li>
               <li className="flex items-center gap-2.5">

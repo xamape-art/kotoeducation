@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { CheckCircle2, MapPin, Clock, Star, Dog, Cat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export const metadata = {
   title: 'Sobre mí | Koto Education',
@@ -24,11 +25,20 @@ export default function SobreMiPage() {
 
       {/* Photo + intro */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-start mb-16">
-        <div className="rounded-2xl bg-secondary/50 aspect-square flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-7xl mb-3">🐾</div>
-            <p className="text-muted-foreground text-sm">Carla con Koto, Galgo español</p>
+        <div className="space-y-3">
+          <div className="relative rounded-2xl overflow-hidden aspect-square border border-border/60 bg-muted shadow-sm">
+            <Image
+              src="/carla-koto.jpg"
+              alt="Carla con Koto, Galgo español"
+              fill
+              className="object-cover hover:scale-[1.02] transition-transform duration-300"
+              sizes="(max-w-768px) 100vw, 400px"
+              priority
+            />
           </div>
+          <p className="text-muted-foreground text-xs text-center italic">
+            Carla con Koto, Galgo español
+          </p>
         </div>
         <div>
           <h2 className="text-2xl font-display font-bold mb-4">Mi historia</h2>
