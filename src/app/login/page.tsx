@@ -6,13 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { PawPrint, Mail, Lock, Loader2, AlertCircle } from 'lucide-react'
+import { PawPrint, Mail, Lock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useSearchParams, useRouter } from 'next/navigation'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [loginMethod, setLoginMethod] = useState<'password' | 'magic'>('password')
   const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -24,22 +26,63 @@ function LoginForm() {
     setError(null)
 
     const supabase = createClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
 
-    if (authError) {
-      if (authError.message === 'Invalid login credentials') {
-        setError('Email o contraseña incorrectos.')
+    if (loginMethod === 'password') {
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (authError) {
+        if (authError.message === 'Invalid login credentials') {
+          setError('Email o contraseña incorrectos.')
+        } else {
+          setError(authError.message)
+        }
+        setLoading(false)
       } else {
-        setError(authError.message)
+        router.refresh()
+        router.push('/admin/dashboard')
       }
-      setLoading(false)
     } else {
-      router.refresh()
-      router.push('/admin/dashboard')
+      // Magic Link Login
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
+        },
+      })
+
+      if (authError) {
+        setError(authError.message)
+        setLoading(false)
+      } else {
+        setSent(true)
+        setLoading(false)
+      }
     }
+  }
+
+  if (sent) {
+    return (
+      <div className="text-center py-4">
+        <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-3" />
+        <h3 className="font-semibold mb-2">¡Enlace enviado!</h3>
+        <p className="text-muted-foreground text-sm">
+          Hemos enviado un enlace mágico a{' '}
+          <strong>{email}</strong>.
+          Revisa tu bandeja de entrada y haz clic en el enlace para acceder.
+        </p>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-4"
+          onClick={() => setSent(false)}
+        >
+          Volver
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -50,6 +93,38 @@ function LoginForm() {
           <span>Error al iniciar sesión. Inténtalo de nuevo.</span>
         </div>
       )}
+
+      {/* Tab Switcher */}
+      <div className="flex rounded-xl bg-muted p-1 mb-4">
+        <button
+          type="button"
+          onClick={() => {
+            setLoginMethod('password')
+            setError(null)
+          }}
+          className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            loginMethod === 'password'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Contraseña
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setLoginMethod('magic')
+            setError(null)
+          }}
+          className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
+            loginMethod === 'magic'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Enlace mágico
+        </button>
+      </div>
 
       <form onSubmit={handleLogin} className="space-y-4">
         <div className="space-y-1.5">
@@ -68,21 +143,23 @@ function LoginForm() {
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="password">Contraseña</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              className="pl-9"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+        {loginMethod === 'password' && (
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Contraseña</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                className="pl-9"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {error && (
           <p className="text-destructive text-xs font-medium">{error}</p>
@@ -92,12 +169,20 @@ function LoginForm() {
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Iniciando sesión...
+              {loginMethod === 'password' ? 'Iniciando sesión...' : 'Enviando enlace...'}
             </>
-          ) : (
+          ) : loginMethod === 'password' ? (
             'Iniciar sesión'
+          ) : (
+            'Enviar enlace mágico'
           )}
         </Button>
+
+        {loginMethod === 'magic' && (
+          <p className="text-center text-[10px] text-muted-foreground mt-1">
+            Te enviaremos un enlace de acceso por email. Sin contraseña.
+          </p>
+        )}
       </form>
     </>
   )
