@@ -371,9 +371,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Request Details Dialog */}
       <Dialog open={openRequestModal} onOpenChange={setOpenRequestModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Detalles de la solicitud</DialogTitle>
           </DialogHeader>
