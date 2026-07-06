@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Plus, Pencil, Tag, ToggleLeft, ToggleRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const mockRates = [
   { id: '1', name: 'Paseo 30 min', description: 'Paseo individual o en grupo (máx. 3) por el barrio', price: 10, category: 'Paseos', active: true },
@@ -36,11 +37,11 @@ const mockRates = [
 ]
 
 const categoryColors: Record<string, string> = {
-  Paseos: 'bg-green-100 text-green-700',
-  Visitas: 'bg-blue-100 text-blue-700',
-  Cuidado: 'bg-orange-100 text-orange-700',
-  Educación: 'bg-purple-100 text-purple-700',
-  Extras: 'bg-gray-100 text-gray-700',
+  Paseos: 'bg-green-50 border-green-200 text-green-700',
+  Visitas: 'bg-blue-50 border-blue-200 text-blue-700',
+  Cuidado: 'bg-orange-50 border-orange-200 text-orange-700',
+  Educación: 'bg-purple-50 border-purple-200 text-purple-700',
+  Extras: 'bg-gray-50 border-gray-200 text-gray-700',
 }
 
 export default function TarifasPage() {
@@ -55,7 +56,8 @@ export default function TarifasPage() {
   const categories = [...new Set(rates.map((r) => r.category))]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-5xl">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Tarifas</h1>
@@ -63,7 +65,7 @@ export default function TarifasPage() {
         </div>
         <Dialog open={openAdd} onOpenChange={setOpenAdd}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="rounded-xl">
               <Plus className="h-4 w-4 mr-2" />
               Nueva tarifa
             </Button>
@@ -107,65 +109,80 @@ export default function TarifasPage() {
         </Dialog>
       </div>
 
-      {categories.map((category) => (
-        <div key={category}>
-          <div className="flex items-center gap-2 mb-3">
-            <Tag className="h-4 w-4 text-primary" />
-            <h2 className="font-display text-xl font-semibold tracking-tight">{category}</h2>
-          </div>
-          <div className="space-y-2">
-            {rates.filter((r) => r.category === category).map((rate) => (
-              <Card key={rate.id} className={!rate.active ? 'opacity-60' : ''}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                        <p className="font-medium">{rate.name}</p>
-                        <Badge className={`text-xs ${categoryColors[rate.category]}`} variant="outline">
+      {/* Categories sections */}
+      <div className="space-y-8">
+        {categories.map((category) => (
+          <div key={category} className="space-y-4">
+            <div className="flex items-center gap-2 pb-1 border-b">
+              <Tag className="h-4.5 w-4.5 text-primary" />
+              <h2 className="font-display text-lg font-semibold tracking-tight">{category}</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {rates.filter((r) => r.category === category).map((rate) => (
+                <Card 
+                  key={rate.id} 
+                  className={cn(
+                    "flex flex-col justify-between border border-border/60 shadow-sm hover:shadow-md transition-all rounded-xl", 
+                    !rate.active ? 'opacity-60 bg-muted/20' : ''
+                  )}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="space-y-1">
+                      <p className="font-semibold text-sm leading-snug">{rate.name}</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        <Badge className={cn("text-[9px] py-0 px-1.5 font-normal", categoryColors[rate.category])} variant="outline">
                           {rate.category}
                         </Badge>
                         {!rate.active && (
-                          <Badge variant="outline" className="text-xs border-red-200 text-red-500">
+                          <Badge variant="outline" className="text-[9px] py-0 px-1.5 border-red-200 text-red-500 bg-red-50/10">
                             Inactivo
                           </Badge>
                         )}
                       </div>
-                      {rate.description && (
-                        <p className="text-xs text-muted-foreground">{rate.description}</p>
-                      )}
                     </div>
-
-                    <div className="text-xl font-bold text-primary w-16 text-right shrink-0">
-                      {rate.price > 0 ? `${rate.price}€` : '—'}
+                  </CardHeader>
+                  <CardContent className="pt-0 flex flex-col justify-between flex-1 gap-3">
+                    {rate.description ? (
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{rate.description}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">Sin descripción</p>
+                    )}
+                    
+                    <div className="flex items-center justify-between mt-auto pt-2 border-t">
+                      <span className="text-base font-bold text-primary">
+                        {rate.price > 0 ? `${rate.price}€` : '0€'}
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg"
+                          onClick={() => setEditRate(rate)}
+                        >
+                          <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg"
+                          onClick={() => toggleActive(rate.id)}
+                        >
+                          {rate.active ? (
+                            <ToggleRight className="h-4.5 w-4.5 text-primary" />
+                          ) : (
+                            <ToggleLeft className="h-4.5 w-4.5 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
-
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setEditRate(rate)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => toggleActive(rate.id)}
-                      >
-                        {rate.active
-                          ? <ToggleRight className="h-4 w-4 text-primary" />
-                          : <ToggleLeft className="h-4 w-4 text-muted-foreground" />}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {/* Edit dialog */}
       <Dialog open={!!editRate} onOpenChange={(o) => !o && setEditRate(null)}>
