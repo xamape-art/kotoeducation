@@ -32,6 +32,7 @@ import {
   Legend,
 } from 'recharts'
 import { Plus, Euro, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
+import { format } from 'date-fns'
 
 const mockIncome = [
   { id: '1', date: '06/07/2025', description: 'Paseo - Koto (Xavier M.)', amount: 10, method: 'cash' },
@@ -65,18 +66,63 @@ const methodLabel: Record<string, string> = {
 }
 
 const methodColor: Record<string, string> = {
-  cash: 'bg-green-100 text-green-700',
-  transfer: 'bg-blue-100 text-blue-700',
-  card: 'bg-purple-100 text-purple-700',
+  cash: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+  transfer: 'bg-blue-50 border-blue-200 text-blue-700',
+  card: 'bg-purple-50 border-purple-200 text-purple-700',
 }
 
 export default function ContabilidadPage() {
   const [incomeOpen, setIncomeOpen] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
 
-  const totalIncome = mockIncome.reduce((s, i) => s + i.amount, 0)
-  const totalExpenses = mockExpenses.reduce((s, e) => s + e.amount, 0)
+  const [incomeList, setIncomeList] = useState(mockIncome)
+  const [expenseList, setExpenseList] = useState(mockExpenses)
+
+  // Form states for income
+  const [incDesc, setIncDesc] = useState('')
+  const [incAmount, setIncAmount] = useState('')
+  const [incMethod, setIncMethod] = useState('cash')
+
+  // Form states for expense
+  const [expDesc, setExpDesc] = useState('')
+  const [expAmount, setExpAmount] = useState('')
+  const [expCategory, setExpCategory] = useState('Suministros')
+
+  const totalIncome = incomeList.reduce((s, i) => s + i.amount, 0)
+  const totalExpenses = expenseList.reduce((s, e) => s + e.amount, 0)
   const profit = totalIncome - totalExpenses
+
+  const handleAddIncome = () => {
+    if (!incDesc || !incAmount) return
+    const newInc = {
+      id: String(Date.now()),
+      date: format(new Date(), 'dd/MM/yyyy'),
+      description: incDesc,
+      amount: Number(incAmount) || 0,
+      method: incMethod,
+    }
+    setIncomeList((prev) => [newInc, ...prev])
+    setIncomeOpen(false)
+    setIncDesc('')
+    setIncAmount('')
+    setIncMethod('cash')
+  }
+
+  const handleAddExpense = () => {
+    if (!expDesc || !expAmount) return
+    const newExp = {
+      id: String(Date.now()),
+      date: format(new Date(), 'dd/MM/yyyy'),
+      description: expDesc,
+      amount: Number(expAmount) || 0,
+      category: expCategory,
+    }
+    setExpenseList((prev) => [newExp, ...prev])
+    setExpenseOpen(false)
+    setExpDesc('')
+    setExpAmount('')
+    setExpCategory('Suministros')
+  }
 
   return (
     <div className="space-y-6">
@@ -88,7 +134,7 @@ export default function ContabilidadPage() {
         <div className="flex gap-2">
           <Dialog open={incomeOpen} onOpenChange={setIncomeOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white">
                 <Plus className="h-4 w-4 mr-1" />
                 Ingreso
               </Button>
@@ -98,32 +144,28 @@ export default function ContabilidadPage() {
               <div className="space-y-4 pt-2">
                 <div className="space-y-1.5">
                   <Label>Descripción *</Label>
-                  <Input placeholder="Ej: Paseo - Koto" />
+                  <Input placeholder="Ej. Paseo de Koto" value={incDesc} onChange={(e) => setIncDesc(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Importe (€) *</Label>
-                    <Input type="number" placeholder="10" />
+                    <Input type="number" placeholder="0" value={incAmount} onChange={(e) => setIncAmount(e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Fecha *</Label>
-                    <Input type="date" />
+                    <Label>Método</Label>
+                    <Select value={incMethod} onValueChange={(val) => setIncMethod(val || 'cash')}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Efectivo</SelectItem>
+                        <SelectItem value="transfer">Transferencia</SelectItem>
+                        <SelectItem value="card">Tarjeta</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Método de pago</Label>
-                  <Select>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Efectivo</SelectItem>
-                      <SelectItem value="transfer">Transferencia</SelectItem>
-                      <SelectItem value="card">Tarjeta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 pt-2">
                   <Button variant="outline" onClick={() => setIncomeOpen(false)}>Cancelar</Button>
-                  <Button onClick={() => setIncomeOpen(false)}>Guardar</Button>
+                  <Button className="bg-emerald-700 hover:bg-emerald-800 text-white" onClick={handleAddIncome}>Guardar</Button>
                 </div>
               </div>
             </DialogContent>
@@ -131,7 +173,7 @@ export default function ContabilidadPage() {
 
           <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/10 text-destructive">
                 <Plus className="h-4 w-4 mr-1" />
                 Gasto
               </Button>
@@ -141,34 +183,29 @@ export default function ContabilidadPage() {
               <div className="space-y-4 pt-2">
                 <div className="space-y-1.5">
                   <Label>Descripción *</Label>
-                  <Input placeholder="Ej: Correa nueva" />
+                  <Input placeholder="Ej. Comida para perros" value={expDesc} onChange={(e) => setExpDesc(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label>Importe (€) *</Label>
-                    <Input type="number" placeholder="18" />
+                    <Input type="number" placeholder="0.00" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Fecha *</Label>
-                    <Input type="date" />
+                    <Label>Categoría</Label>
+                    <Select value={expCategory} onValueChange={(val) => setExpCategory(val || 'Suministros')}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Suministros">Suministros</SelectItem>
+                        <SelectItem value="Equipo">Equipo</SelectItem>
+                        <SelectItem value="Transporte">Transporte</SelectItem>
+                        <SelectItem value="Formación">Formación</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Categoría</Label>
-                  <Select>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="transport">Transporte</SelectItem>
-                      <SelectItem value="supplies">Suministros</SelectItem>
-                      <SelectItem value="equipment">Equipo</SelectItem>
-                      <SelectItem value="training">Formación</SelectItem>
-                      <SelectItem value="other">Otro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 pt-2">
                   <Button variant="outline" onClick={() => setExpenseOpen(false)}>Cancelar</Button>
-                  <Button onClick={() => setExpenseOpen(false)}>Guardar</Button>
+                  <Button variant="destructive" onClick={handleAddExpense}>Guardar</Button>
                 </div>
               </div>
             </DialogContent>
@@ -176,33 +213,33 @@ export default function ContabilidadPage() {
         </div>
       </div>
 
-      {/* Summary cards */}
+      {/* Cards summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="border-emerald-200 bg-emerald-50/20 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Ingresos (mes)</span>
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-emerald-700" />
             </div>
-            <div className="text-3xl font-bold text-green-600">{totalIncome.toFixed(2)}€</div>
+            <div className="text-3xl font-bold text-emerald-700">{totalIncome.toFixed(2)}€</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-destructive/20 bg-destructive/[0.02] shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Gastos (mes)</span>
-              <TrendingDown className="h-4 w-4 text-red-500" />
+              <TrendingDown className="h-4 w-4 text-destructive" />
             </div>
-            <div className="text-3xl font-bold text-red-500">{totalExpenses.toFixed(2)}€</div>
+            <div className="text-3xl font-bold text-destructive">{totalExpenses.toFixed(2)}€</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-primary/10 bg-primary/[0.02] shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Beneficio neto</span>
               <Wallet className="h-4 w-4 text-primary" />
             </div>
-            <div className={`text-3xl font-bold ${profit >= 0 ? 'text-primary' : 'text-red-500'}`}>
+            <div className={`text-3xl font-bold ${profit >= 0 ? 'text-primary' : 'text-destructive'}`}>
               {profit.toFixed(2)}€
             </div>
           </CardContent>
@@ -220,16 +257,16 @@ export default function ContabilidadPage() {
           <Card>
             <CardContent className="p-0">
               <div className="divide-y">
-                {mockIncome.map((item) => (
+                {incomeList.map((item) => (
                   <div key={item.id} className="flex items-center gap-4 p-4 text-sm">
                     <div className="text-muted-foreground w-24 shrink-0">{item.date}</div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate">{item.description}</p>
+                      <p className="truncate font-medium">{item.description}</p>
                     </div>
                     <Badge className={`text-xs ${methodColor[item.method]}`} variant="outline">
                       {methodLabel[item.method]}
                     </Badge>
-                    <span className="font-semibold text-green-600 w-16 text-right">+{item.amount}€</span>
+                    <span className="font-semibold text-emerald-700 w-16 text-right">+{item.amount}€</span>
                   </div>
                 ))}
               </div>
@@ -241,14 +278,14 @@ export default function ContabilidadPage() {
           <Card>
             <CardContent className="p-0">
               <div className="divide-y">
-                {mockExpenses.map((item) => (
+                {expenseList.map((item) => (
                   <div key={item.id} className="flex items-center gap-4 p-4 text-sm">
                     <div className="text-muted-foreground w-24 shrink-0">{item.date}</div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate">{item.description}</p>
+                      <p className="truncate font-medium">{item.description}</p>
                     </div>
-                    <Badge variant="outline" className="text-xs">{item.category}</Badge>
-                    <span className="font-semibold text-red-500 w-16 text-right">-{item.amount}€</span>
+                    <Badge variant="outline" className="text-xs border-muted-foreground/20 text-muted-foreground">{item.category}</Badge>
+                    <span className="font-semibold text-destructive w-16 text-right">-{item.amount}€</span>
                   </div>
                 ))}
               </div>
@@ -269,21 +306,21 @@ export default function ContabilidadPage() {
                   <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}€`} />
                   <Tooltip formatter={(v) => [`${v}€`]} />
                   <Legend />
-                  <Bar dataKey="ingresos" name="Ingresos" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="gastos" name="Gastos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="ingresos" name="Ingresos" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="gastos" name="Gastos" fill="var(--destructive)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
 
               {/* Annual totals */}
               <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t text-center">
                 <div>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-2xl font-bold text-emerald-700">
                     {monthlyData.reduce((s, m) => s + m.ingresos, 0)}€
                   </p>
                   <p className="text-xs text-muted-foreground">Total ingresos</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-red-500">
+                  <p className="text-2xl font-bold text-destructive">
                     {monthlyData.reduce((s, m) => s + m.gastos, 0).toFixed(1)}€
                   </p>
                   <p className="text-xs text-muted-foreground">Total gastos</p>

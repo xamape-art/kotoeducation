@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Search, Plus, Phone, Mail, Dog, ChevronRight, Users } from 'lucide-react'
+import { Search, Plus, Phone, Mail, Dog, ChevronRight, Users, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 const mockClients = [
@@ -67,10 +67,55 @@ const mockClients = [
 ]
 
 export default function ClientesPage() {
+  const [clients, setClients] = useState(mockClients)
   const [search, setSearch] = useState('')
   const [open, setOpen] = useState(false)
 
-  const filtered = mockClients.filter(
+  // Form states for new client
+  const [newName, setNewName] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newAddress, setNewAddress] = useState('')
+  const [newNotes, setNewNotes] = useState('')
+
+  const handleCreateClient = () => {
+    if (!newName) {
+      alert('El nombre es obligatorio.')
+      return
+    }
+
+    const newClientObj = {
+      id: String(clients.length + 1),
+      name: newName,
+      email: newEmail,
+      phone: newPhone,
+      address: newAddress,
+      notes: newNotes,
+      pets: [],
+      lastAppointment: 'Sin citas',
+      totalAppointments: 0,
+    }
+
+    setClients((prev) => [newClientObj, ...prev])
+    setOpen(false)
+
+    // Reset fields
+    setNewName('')
+    setNewPhone('')
+    setNewEmail('')
+    setNewAddress('')
+    setNewNotes('')
+  }
+
+  const handleDeleteClient = (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (confirm('¿Estás seguro de que deseas eliminar este cliente?')) {
+      setClients((prev) => prev.filter((c) => c.id !== id))
+    }
+  }
+
+  const filtered = clients.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -82,7 +127,7 @@ export default function ClientesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Clientes</h1>
-          <p className="text-muted-foreground text-sm">{mockClients.length} clientes registrados</p>
+          <p className="text-muted-foreground text-sm">{clients.length} clientes registrados</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -99,28 +144,28 @@ export default function ClientesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Nombre *</Label>
-                  <Input placeholder="Nombre completo" />
+                  <Input placeholder="Nombre completo" value={newName} onChange={(e) => setNewName(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Teléfono</Label>
-                  <Input placeholder="+34 600 000 000" />
+                  <Input placeholder="+34 600 000 000" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Email</Label>
-                <Input type="email" placeholder="email@ejemplo.com" />
+                <Input type="email" placeholder="email@ejemplo.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label>Dirección</Label>
-                <Input placeholder="Calle, barrio..." />
+                <Input placeholder="Calle, barrio..." value={newAddress} onChange={(e) => setNewAddress(e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label>Notas</Label>
-                <Textarea placeholder="Información relevante sobre el cliente..." rows={3} />
+                <Textarea placeholder="Información relevante sobre el cliente..." rows={3} value={newNotes} onChange={(e) => setNewNotes(e.target.value)} />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                <Button onClick={() => setOpen(false)}>Guardar cliente</Button>
+                <Button onClick={handleCreateClient}>Guardar cliente</Button>
               </div>
             </div>
           </DialogContent>
@@ -185,11 +230,16 @@ export default function ClientesPage() {
                   <span className="text-xs text-muted-foreground">Última: {client.lastAppointment}</span>
                 </div>
 
-                <Button asChild variant="ghost" size="icon" className="shrink-0">
-                  <Link href={`/admin/clientes/${client.id}`}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9 rounded-lg" onClick={(e) => handleDeleteClient(client.id, e)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
+                    <Link href={`/admin/clientes/${client.id}`}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

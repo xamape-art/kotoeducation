@@ -28,6 +28,8 @@ import {
   Dog,
   Home,
   Heart,
+  Edit,
+  Trash2,
 } from 'lucide-react'
 import {
   format,
@@ -62,6 +64,21 @@ export default function CalendarioPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date(2025, 6, 1))
   const [selectedDay, setSelectedDay] = useState<Date | null>(new Date(2025, 6, 7))
   const [openDialog, setOpenDialog] = useState(false)
+  const [appointments, setAppointments] = useState(mockAppointments)
+
+  // Form states for new appointment
+  const [newClient, setNewClient] = useState('')
+  const [newPet, setNewPet] = useState('')
+  const [newService, setNewService] = useState('walk')
+  const [newDate, setNewDate] = useState('')
+  const [newTime, setNewTime] = useState('')
+  const [newDuration, setNewDuration] = useState('30')
+  const [newPrice, setNewPrice] = useState('10')
+  const [newNotes, setNewNotes] = useState('')
+
+  // Form states for editing appointment
+  const [editingApt, setEditingApt] = useState<any>(null)
+  const [openEditDialog, setOpenEditDialog] = useState(false)
 
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
@@ -69,11 +86,75 @@ export default function CalendarioPage() {
   const startDow = (getDay(monthStart) + 6) % 7 // Monday-based
 
   const getAppointmentsForDay = (day: Date) =>
-    mockAppointments.filter((a) => isSameDay(a.date, day))
+    appointments.filter((a) => isSameDay(a.date, day))
 
   const selectedDayAppointments = selectedDay ? getAppointmentsForDay(selectedDay) : []
-  const monthAppointments = mockAppointments.filter((a) => isSameMonth(a.date, currentMonth))
+  const monthAppointments = appointments.filter((a) => isSameMonth(a.date, currentMonth))
   const confirmedAppointments = monthAppointments.filter((a) => a.status === 'confirmed').length
+
+  const handleCreateAppointment = () => {
+    if (!newClient || !newPet || !newDate || !newTime) {
+      alert('Por favor complete todos los campos obligatorios.')
+      return
+    }
+
+    const [year, month, day] = newDate.split('-').map(Number)
+    const serviceLabelMap: Record<string, string> = {
+      walk: 'Paseo',
+      visit: 'Visita',
+      care: 'Cuidado',
+      training: 'Educación',
+    }
+
+    const newApt = {
+      id: String(Date.now()),
+      date: new Date(year, month - 1, day),
+      time: newTime,
+      client: newClient,
+      pet: newPet,
+      service: serviceLabelMap[newService] || 'Paseo',
+      type: newService,
+      price: Number(newPrice) || 10,
+      status: 'confirmed',
+    }
+
+    setAppointments((prev) => [...prev, newApt])
+    setOpenDialog(false)
+
+    // Reset fields
+    setNewClient('')
+    setNewPet('')
+    setNewService('walk')
+    setNewDate('')
+    setNewTime('')
+    setNewDuration('30')
+    setNewPrice('10')
+    setNewNotes('')
+  }
+
+  const handleOpenEdit = (apt: any) => {
+    setEditingApt({ ...apt })
+    setOpenEditDialog(true)
+  }
+
+  const handleUpdateAppointment = () => {
+    if (!editingApt.client || !editingApt.pet || !editingApt.time) {
+      alert('Por favor complete todos los campos obligatorios.')
+      return
+    }
+
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === editingApt.id ? editingApt : a))
+    )
+    setOpenEditDialog(false)
+    setEditingApt(null)
+  }
+
+  const handleDeleteAppointment = (id: string) => {
+    if (confirm('¿Estás seguro de que deseas eliminar esta cita?')) {
+      setAppointments((prev) => prev.filter((a) => a.id !== id))
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -99,29 +180,34 @@ export default function CalendarioPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Cliente *</Label>
-                  <Select>
+                  <Select value={newClient} onValueChange={(val) => setNewClient(val || '')}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Xavier M.</SelectItem>
-                      <SelectItem value="2">Laura G.</SelectItem>
-                      <SelectItem value="3">Marc T.</SelectItem>
+                      <SelectItem value="Xavier M.">Xavier M.</SelectItem>
+                      <SelectItem value="Laura G.">Laura G.</SelectItem>
+                      <SelectItem value="Marc T.">Marc T.</SelectItem>
+                      <SelectItem value="Ana R.">Ana R.</SelectItem>
+                      <SelectItem value="Pedro L.">Pedro L.</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Mascota *</Label>
-                  <Select>
+                  <Select value={newPet} onValueChange={(val) => setNewPet(val || '')}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="koto">Koto</SelectItem>
-                      <SelectItem value="max">Max</SelectItem>
+                      <SelectItem value="Koto">Koto</SelectItem>
+                      <SelectItem value="Max">Max</SelectItem>
+                      <SelectItem value="Luna">Luna</SelectItem>
+                      <SelectItem value="Mochi">Mochi</SelectItem>
+                      <SelectItem value="Rocky">Rocky</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Servicio *</Label>
-                <Select>
+                <Select value={newService} onValueChange={(val) => setNewService(val || 'walk')}>
                   <SelectTrigger><SelectValue placeholder="Tipo de servicio" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="walk">Paseo de perros (10€)</SelectItem>
@@ -134,30 +220,30 @@ export default function CalendarioPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Fecha *</Label>
-                  <Input type="date" />
+                  <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Hora *</Label>
-                  <Input type="time" />
+                  <Input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Duración (min)</Label>
-                  <Input type="number" placeholder="30" />
+                  <Input type="number" placeholder="30" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Precio (€)</Label>
-                  <Input type="number" placeholder="10" />
+                  <Input type="number" placeholder="10" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Notas</Label>
-                <Textarea placeholder="Notas sobre la cita..." rows={2} />
+                <Textarea placeholder="Notas sobre la cita..." rows={2} value={newNotes} onChange={(e) => setNewNotes(e.target.value)} />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button>
-                <Button onClick={() => setOpenDialog(false)}>Crear cita</Button>
+                <Button onClick={handleCreateAppointment}>Crear cita</Button>
               </div>
             </div>
           </DialogContent>
@@ -188,7 +274,7 @@ export default function CalendarioPage() {
         <Card className="border-amber-200 bg-amber-50 shadow-sm">
           <CardContent className="p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Día seleccionado</p>
-            <p className="mt-2 text-lg font-semibold">
+            <p className="mt-2 text-3xl font-bold">
               {selectedDay ? format(selectedDay, "d MMM", { locale: es }) : 'Sin selección'}
             </p>
             <p className="text-sm text-muted-foreground">
@@ -219,8 +305,8 @@ export default function CalendarioPage() {
                   variant="outline"
                   className="hidden sm:inline-flex"
                   onClick={() => {
-                    setCurrentMonth(new Date())
-                    setSelectedDay(new Date())
+                    setCurrentMonth(new Date(2025, 6, 1))
+                    setSelectedDay(new Date(2025, 6, 7))
                   }}
                 >
                   Hoy
@@ -231,7 +317,7 @@ export default function CalendarioPage() {
                   className="h-10 w-10 rounded-full"
                   onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
                 >
-                <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -256,14 +342,14 @@ export default function CalendarioPage() {
               {days.map((day) => {
                 const dayApts = getAppointmentsForDay(day)
                 const isSelected = selectedDay && isSameDay(day, selectedDay)
-                const isToday = isSameDay(day, new Date())
+                const isToday = isSameDay(day, new Date(2025, 6, 7)) // fixed mock today for demo consistency
 
                 return (
                   <button
                     key={day.toISOString()}
                     onClick={() => setSelectedDay(day)}
                     className={`relative min-h-[108px] rounded-xl border p-2.5 text-left transition-all hover:border-border hover:bg-secondary/40 ${
-                      isSelected ? 'border-primary bg-primary/8 ring-2 ring-primary/15 shadow-sm' : 'border-border/60 bg-background'
+                      isSelected ? 'border-primary bg-primary/[0.08] ring-2 ring-primary/15 shadow-sm' : 'border-border/60 bg-background'
                     } ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}`}
                   >
                     <div className="mb-2 flex items-start justify-between gap-2">
@@ -343,6 +429,18 @@ export default function CalendarioPage() {
                           {apt.status === 'confirmed' ? 'Confirmada' : 'Pendiente'}
                         </Badge>
                       </div>
+
+                      {/* Edit and delete buttons */}
+                      <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-border/40">
+                        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => handleOpenEdit(apt)}>
+                          <Edit className="h-3 w-3 mr-1" />
+                          Editar
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteAppointment(apt.id)}>
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Eliminar
+                        </Button>
+                      </div>
                     </div>
                   ))}
               </div>
@@ -350,6 +448,83 @@ export default function CalendarioPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit dialog */}
+      <Dialog open={openEditDialog} onOpenChange={setOpenEditDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar cita</DialogTitle>
+          </DialogHeader>
+          {editingApt && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Cliente *</Label>
+                  <Input value={editingApt.client} onChange={(e) => setEditingApt({ ...editingApt, client: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Mascota *</Label>
+                  <Input value={editingApt.pet} onChange={(e) => setEditingApt({ ...editingApt, pet: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Servicio *</Label>
+                <Select value={editingApt.type} onValueChange={(val) => {
+                  if (!val) return
+                  const serviceLabelMap: Record<string, string> = {
+                    walk: 'Paseo',
+                    visit: 'Visita',
+                    care: 'Cuidado',
+                    training: 'Educación',
+                  }
+                  setEditingApt({ ...editingApt, type: val, service: serviceLabelMap[val] || 'Paseo' })
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Tipo de servicio" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="walk">Paseo de perros (10€)</SelectItem>
+                    <SelectItem value="visit">Visita a domicilio (10€)</SelectItem>
+                    <SelectItem value="care">Cuidado a domicilio (35€)</SelectItem>
+                    <SelectItem value="training">Educación canina</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Fecha *</Label>
+                  <Input type="date" value={editingApt.date ? format(new Date(editingApt.date), 'yyyy-MM-dd') : ''} onChange={(e) => {
+                    const [year, month, day] = e.target.value.split('-').map(Number)
+                    setEditingApt({ ...editingApt, date: new Date(year, month - 1, day) })
+                  }} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Hora *</Label>
+                  <Input type="time" value={editingApt.time} onChange={(e) => setEditingApt({ ...editingApt, time: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Precio (€)</Label>
+                  <Input type="number" value={editingApt.price} onChange={(e) => setEditingApt({ ...editingApt, price: Number(e.target.value) })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Estado</Label>
+                  <Select value={editingApt.status} onValueChange={(val) => setEditingApt({ ...editingApt, status: val || 'confirmed' })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="confirmed">Confirmada</SelectItem>
+                      <SelectItem value="pending">Pendiente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setOpenEditDialog(false)}>Cancelar</Button>
+                <Button onClick={handleUpdateAppointment}>Guardar cambios</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
