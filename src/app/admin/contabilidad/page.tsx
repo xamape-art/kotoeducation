@@ -391,8 +391,8 @@ export default function ContabilidadPage() {
         {/* Income Card */}
         <Card className="border border-border/60 shadow-sm flex flex-col justify-between">
           <CardHeader className="pb-3">
-            <CardTitle className="font-display text-base font-semibold flex items-center gap-2 text-emerald-750">
-              <TrendingUp className="h-4.5 w-4.5 text-emerald-750" />
+            <CardTitle className="font-display text-base font-semibold flex items-center gap-2 text-emerald-700">
+              <TrendingUp className="h-4.5 w-4.5 text-emerald-700" />
               Ingresos recientes
             </CardTitle>
           </CardHeader>
@@ -478,7 +478,7 @@ export default function ContabilidadPage() {
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}€`} />
               <Tooltip formatter={(v) => [`${v}€`]} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="ingresos" name="Ingresos" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="ingresos" name="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
               <Bar dataKey="gastos" name="Gastos" fill="var(--destructive)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
