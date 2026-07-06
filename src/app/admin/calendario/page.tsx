@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Calendar } from '@/components/ui/calendar'
 import {
   ChevronLeft,
   ChevronRight,
@@ -44,16 +43,10 @@ import {
 import { es } from 'date-fns/locale'
 
 const SERVICE_COLORS: Record<string, string> = {
-  walk: 'bg-green-200 text-green-800',
-  visit: 'bg-blue-200 text-blue-800',
-  care: 'bg-orange-200 text-orange-800',
-  training: 'bg-purple-200 text-purple-800',
-}
-
-const SERVICE_ICONS = {
-  walk: Dog,
-  visit: Home,
-  care: Heart,
+  walk: 'border border-emerald-200 bg-emerald-100 text-emerald-900',
+  visit: 'border border-sky-200 bg-sky-100 text-sky-900',
+  care: 'border border-amber-200 bg-amber-100 text-amber-900',
+  training: 'border border-violet-200 bg-violet-100 text-violet-900',
 }
 
 const mockAppointments = [
@@ -79,6 +72,8 @@ export default function CalendarioPage() {
     mockAppointments.filter((a) => isSameDay(a.date, day))
 
   const selectedDayAppointments = selectedDay ? getAppointmentsForDay(selectedDay) : []
+  const monthAppointments = mockAppointments.filter((a) => isSameMonth(a.date, currentMonth))
+  const confirmedAppointments = monthAppointments.filter((a) => a.status === 'confirmed').length
 
   return (
     <div className="space-y-6">
@@ -177,33 +172,86 @@ export default function CalendarioPage() {
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-200" />Educación</span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-primary/15 bg-primary/[0.04] shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Citas este mes</p>
+            <p className="mt-2 text-3xl font-bold">{monthAppointments.length}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-emerald-200 bg-emerald-50 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Confirmadas</p>
+            <p className="mt-2 text-3xl font-bold text-emerald-900">{confirmedAppointments}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-amber-200 bg-amber-50 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Día seleccionado</p>
+            <p className="mt-2 text-lg font-semibold">
+              {selectedDay ? format(selectedDay, "d MMM", { locale: es }) : 'Sin selección'}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {selectedDayAppointments.length} cita{selectedDayAppointments.length === 1 ? '' : 's'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Calendar grid */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
+        <Card className="lg:col-span-3 shadow-sm">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-full"
+                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <CardTitle className="text-base capitalize">
+              <CardTitle className="text-lg capitalize">
                 {format(currentMonth, 'MMMM yyyy', { locale: es })}
               </CardTitle>
-              <Button variant="ghost" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="hidden sm:inline-flex"
+                  onClick={() => {
+                    setCurrentMonth(new Date())
+                    setSelectedDay(new Date())
+                  }}
+                >
+                  Hoy
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 rounded-full"
+                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                >
                 <ChevronRight className="h-4 w-4" />
-              </Button>
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             {/* Day headers */}
-            <div className="grid grid-cols-7 mb-2">
+            <div className="grid grid-cols-7 gap-2 mb-3">
               {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((d) => (
-                <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+                <div
+                  key={d}
+                  className="rounded-md bg-muted/50 py-2 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  {d}
+                </div>
               ))}
             </div>
             {/* Day cells */}
-            <div className="grid grid-cols-7 gap-0.5">
+            <div className="grid grid-cols-7 gap-2">
               {[...Array(startDow)].map((_, i) => (
-                <div key={`empty-${i}`} />
+                <div key={`empty-${i}`} className="min-h-[108px] rounded-xl bg-muted/20" />
               ))}
               {days.map((day) => {
                 const dayApts = getAppointmentsForDay(day)
@@ -214,26 +262,38 @@ export default function CalendarioPage() {
                   <button
                     key={day.toISOString()}
                     onClick={() => setSelectedDay(day)}
-                    className={`relative min-h-[60px] p-1.5 rounded-lg text-left transition-colors hover:bg-muted/60 ${
-                      isSelected ? 'bg-primary/10 ring-1 ring-primary' : ''
+                    className={`relative min-h-[108px] rounded-xl border p-2.5 text-left transition-all hover:border-border hover:bg-secondary/40 ${
+                      isSelected ? 'border-primary bg-primary/8 ring-2 ring-primary/15 shadow-sm' : 'border-border/60 bg-background'
                     } ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}`}
                   >
-                    <span className={`text-xs font-medium block mb-1 ${
-                      isToday ? 'bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px]' : ''
-                    }`}>
-                      {format(day, 'd')}
-                    </span>
-                    <div className="space-y-0.5">
-                      {dayApts.slice(0, 2).map((apt) => (
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <span
+                        className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                          isToday ? 'bg-primary text-primary-foreground' : 'text-foreground'
+                        }`}
+                      >
+                        {format(day, 'd')}
+                      </span>
+                      {dayApts.length > 0 && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                          {dayApts.length}
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      {dayApts.slice(0, 3).map((apt) => (
                         <div
                           key={apt.id}
-                          className={`text-[10px] px-1 rounded truncate ${SERVICE_COLORS[apt.type]}`}
+                          className={`rounded-md px-2 py-1 text-[11px] leading-tight ${SERVICE_COLORS[apt.type]}`}
                         >
-                          {apt.time} {apt.pet}
+                          <span className="block font-semibold">{apt.time}</span>
+                          <span className="block truncate">{apt.pet}</span>
                         </div>
                       ))}
-                      {dayApts.length > 2 && (
-                        <div className="text-[10px] text-muted-foreground px-1">+{dayApts.length - 2} más</div>
+                      {dayApts.length > 3 && (
+                        <div className="px-1 text-[11px] font-medium text-muted-foreground">
+                          +{dayApts.length - 3} más
+                        </div>
                       )}
                     </div>
                   </button>
@@ -244,7 +304,7 @@ export default function CalendarioPage() {
         </Card>
 
         {/* Day detail */}
-        <Card>
+        <Card className="shadow-sm lg:sticky lg:top-24 h-fit">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
               {selectedDay
@@ -254,23 +314,28 @@ export default function CalendarioPage() {
           </CardHeader>
           <CardContent>
             {selectedDayAppointments.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Sin citas este día</p>
+              <div className="rounded-xl border border-dashed border-border p-6 text-center">
+                <p className="text-sm font-medium">Sin citas este día</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Selecciona otra fecha o crea una nueva cita.
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {selectedDayAppointments
                   .sort((a, b) => a.time.localeCompare(b.time))
                   .map((apt) => (
-                    <div key={apt.id} className="border rounded-lg p-3">
+                    <div key={apt.id} className="rounded-xl border p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="font-medium text-sm">{apt.time}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${SERVICE_COLORS[apt.type]}`}>
+                        <span className="font-semibold text-sm">{apt.time}</span>
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${SERVICE_COLORS[apt.type]}`}>
                           {apt.service}
                         </span>
                       </div>
-                      <p className="text-sm font-medium">{apt.pet}</p>
-                      <p className="text-xs text-muted-foreground">{apt.client}</p>
+                      <p className="text-base font-semibold">{apt.pet}</p>
+                      <p className="text-sm text-muted-foreground">{apt.client}</p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-sm font-semibold">{apt.price}€</span>
+                        <span className="text-base font-semibold">{apt.price}€</span>
                         <Badge
                           variant="outline"
                           className={`text-xs ${apt.status === 'confirmed' ? 'border-green-300 text-green-700' : 'border-yellow-300 text-yellow-700'}`}
