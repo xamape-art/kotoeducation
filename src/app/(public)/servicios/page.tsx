@@ -138,8 +138,10 @@ export default function ServiciosPage() {
           <Card key={s.id} id={s.id} className={`border-2 ${s.bgColor} ${s.borderColor}`}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{s.emoji}</span>
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-border/30 flex items-center justify-center text-primary shadow-sm shrink-0">
+                    <s.icon className="h-5 w-5" />
+                  </div>
                   <CardTitle className="font-display text-lg font-semibold">{s.title}</CardTitle>
                 </div>
                 <div className="text-right">
