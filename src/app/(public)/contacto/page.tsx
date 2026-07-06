@@ -49,8 +49,8 @@ export default function ContactoPage() {
                 <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Email</p>
-                  <a href="mailto:carmarcap@gmail.com" className="text-muted-foreground hover:text-foreground">
-                    carmarcap@gmail.com
+                  <a href="mailto:kotoeducation@gmail.com" className="text-muted-foreground hover:text-foreground">
+                    kotoeducation@gmail.com
                   </a>
                 </div>
               </div>
