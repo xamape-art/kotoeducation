@@ -373,7 +373,7 @@ export default function DashboardPage() {
 
       {/* Request Details Dialog */}
       <Dialog open={openRequestModal} onOpenChange={setOpenRequestModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Detalles de la solicitud</DialogTitle>
           </DialogHeader>
@@ -445,27 +445,29 @@ export default function DashboardPage() {
                   </Badge>
                 </div>
                 
-                <div className="flex gap-2 justify-end mt-2">
-                  {selectedRequest.status === 'new' && (
-                    <Button variant="outline" size="sm" onClick={() => handleUpdateStatus('contacted')}>
-                      Marcar como contactado
-                    </Button>
-                  )}
-                  {selectedRequest.status !== 'booked' && (
-                    <Button size="sm" onClick={handleCreateClientFromRequest} disabled={creatingClient}>
-                      {creatingClient ? (
-                        <>
-                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          Creando...
-                        </>
-                      ) : (
-                        'Crear ficha de cliente'
-                      )}
-                    </Button>
-                  )}
-                  <Button variant="ghost" size="sm" onClick={() => setOpenRequestModal(false)}>
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-3">
+                  <Button variant="ghost" size="sm" onClick={() => setOpenRequestModal(false)} className="sm:order-first order-last justify-center">
                     Cerrar
                   </Button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {selectedRequest.status === 'new' && (
+                      <Button variant="outline" size="sm" onClick={() => handleUpdateStatus('contacted')} className="justify-center">
+                        Marcar como contactado
+                      </Button>
+                    )}
+                    {selectedRequest.status !== 'booked' && (
+                      <Button size="sm" onClick={handleCreateClientFromRequest} disabled={creatingClient} className="justify-center">
+                        {creatingClient ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            Creando...
+                          </>
+                        ) : (
+                          'Crear ficha de cliente'
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
