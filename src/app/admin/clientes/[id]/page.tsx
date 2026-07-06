@@ -23,42 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowLeft, Phone, Mail, MapPin, Dog, Calendar, Edit, Plus, FileText, Trash2, Camera } from 'lucide-react'
+import { ArrowLeft, Phone, Mail, MapPin, Dog, Calendar, Edit, Plus, FileText, Trash2, Camera, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-
-const mockClientsData = [
-  { id: '1', name: 'Xavier M.', email: 'xavier@email.com', phone: '+34 611 222 333', address: 'C/ Major, 12, Terrassa', notes: 'Prefiere paseos por la tarde. Koto es reactivo con perros desconocidos.', createdAt: 'Enero 2024' },
-  { id: '2', name: 'Laura G.', email: 'laura@email.com', phone: '+34 622 333 444', address: 'Av. Barcelona, 45, Terrassa', notes: 'Max es muy amigable.', createdAt: 'Febrero 2024' },
-  { id: '3', name: 'Marc T.', email: 'marc@email.com', phone: '+34 633 444 555', address: 'C/ del Vent, 8, Terrassa', notes: 'Luna corre mucho.', createdAt: 'Marzo 2024' },
-  { id: '4', name: 'Ana R.', email: 'ana@email.com', phone: '+34 644 555 666', address: 'C/ Nou, 15, Terrassa', notes: 'Mochi es tímido.', createdAt: 'Abril 2024' },
-  { id: '5', name: 'Pedro L.', email: 'pedro@email.com', phone: '+34 655 666 777', address: 'C/ Ample, 88, Terrassa', notes: 'Rocky y Nala se llevan genial.', createdAt: 'Mayo 2024' },
-]
-
-const mockPetsData: Record<string, any[]> = {
-  '1': [
-    { id: 'p1', name: 'Koto', breed: 'Galgo español', sex: 'male', weight: 18, ageYears: 4, ageMonths: 3, needs: 'Reactivo con perros desconocidos. Necesita paseos tranquilos. Le encanta correr.', notes: 'Come 2 veces al día. Pienso Hills Adult. Vacunas al día.', photo: null }
-  ],
-  '2': [
-    { id: 'p2', name: 'Max', breed: 'Golden Retriever', sex: 'male', weight: 32, ageYears: 2, ageMonths: 6, needs: '', notes: 'Muy juguetón.', photo: null }
-  ],
-  '3': [
-    { id: 'p3', name: 'Luna', breed: 'Galgo', sex: 'female', weight: 20, ageYears: 3, ageMonths: 0, needs: '', notes: 'Le gusta perseguir pelotas.', photo: null }
-  ],
-  '4': [
-    { id: 'p4', name: 'Mochi', breed: 'Gato Siamés', sex: 'male', weight: 4.5, ageYears: 1, ageMonths: 2, needs: '', notes: 'Le gusta que le cepillen.', photo: null }
-  ],
-  '5': [
-    { id: 'p5', name: 'Rocky', breed: 'Labrador', sex: 'male', weight: 35, ageYears: 5, ageMonths: 8, needs: '', notes: 'Tiene mucha energía.', photo: null },
-    { id: 'p6', name: 'Nala', breed: 'Mestiza', sex: 'female', weight: 12, ageYears: 2, ageMonths: 1, needs: '', notes: 'Muy cariñosa.', photo: null }
-  ],
-}
-
-const mockAppointmentsData = [
-  { id: '1', clientId: '1', date: '06/07/2025', time: '09:00', service: 'Paseo 30min', pet: 'Koto', price: 10, status: 'confirmed' },
-  { id: '2', clientId: '1', date: '03/07/2025', time: '09:00', service: 'Paseo 30min', pet: 'Koto', price: 10, status: 'completed' },
-  { id: '3', clientId: '1', date: '01/07/2025', time: '09:00', service: 'Paseo 30min', pet: 'Koto', price: 10, status: 'completed' },
-  { id: '4', clientId: '1', date: '28/06/2025', time: '16:30', service: 'Visita domicilio', pet: 'Koto', price: 10, status: 'completed' },
-]
+import { createClient } from '@/lib/supabase/client'
 
 const statusBadge: Record<string, { label: string; className: string }> = {
   confirmed: { label: 'Confirmada', className: 'bg-green-100 text-green-700' },
@@ -68,14 +35,16 @@ const statusBadge: Record<string, { label: string; className: string }> = {
 }
 
 export default function ClientDetailPage() {
+  const supabase = createClient()
   const params = useParams()
   const router = useRouter()
-  const clientId = (params.id as string) || '1'
+  const clientId = params.id as string
 
   // Data states
   const [client, setClient] = useState<any>(null)
   const [pets, setPets] = useState<any[]>([])
   const [appointments, setAppointments] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   // Edit Client dialog states
   const [openEditClient, setOpenEditClient] = useState(false)
@@ -98,19 +67,58 @@ export default function ClientDetailPage() {
   const [petNotes, setPetNotes] = useState('')
   const [petPhoto, setPetPhoto] = useState<string | null>(null)
 
+  const fetchClientData = async () => {
+    try {
+      setLoading(true)
+      const { data: clientData, error: clientErr } = await supabase
+        .from('clients')
+        .select('*, pets(*)')
+        .eq('id', clientId)
+        .single()
+
+      if (clientErr) throw clientErr
+
+      setClient(clientData)
+      setPets(clientData?.pets || [])
+
+      // Safe fetch for appointments if the table exists
+      const { data: aptData } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('client_id', clientId)
+      
+      setAppointments(aptData || [])
+    } catch (err) {
+      console.error('Error fetching client details:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    const foundClient = mockClientsData.find((c) => c.id === clientId) || mockClientsData[0]
-    setClient(foundClient)
-
-    const foundPets = mockPetsData[clientId] || []
-    setPets(foundPets)
-
-    const foundApts = mockAppointmentsData.filter((a) => a.clientId === clientId)
-    setAppointments(foundApts)
+    if (clientId) {
+      fetchClientData()
+    }
   }, [clientId])
 
+  if (loading) {
+    return (
+      <div className="text-center py-12 text-muted-foreground max-w-4xl">
+        <Loader2 className="h-10 w-10 animate-spin mx-auto mb-3 text-primary opacity-70" />
+        <p>Cargando detalles del cliente...</p>
+      </div>
+    )
+  }
+
   if (!client) {
-    return <div className="text-center py-12">Cargando detalles del cliente...</div>
+    return (
+      <div className="text-center py-12 max-w-4xl space-y-4">
+        <p className="text-muted-foreground">No se encontró el cliente o no existe.</p>
+        <Button asChild variant="outline">
+          <Link href="/admin/clientes">Volver a Clientes</Link>
+        </Button>
+      </div>
+    )
   }
 
   const handleOpenEditClient = () => {
@@ -122,25 +130,49 @@ export default function ClientDetailPage() {
     setOpenEditClient(true)
   }
 
-  const handleUpdateClient = () => {
+  const handleUpdateClient = async () => {
     if (!editName) {
       alert('El nombre es obligatorio.')
       return
     }
-    setClient({
-      ...client,
-      name: editName,
-      phone: editPhone,
-      email: editEmail,
-      address: editAddress,
-      notes: editNotes,
-    })
-    setOpenEditClient(false)
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .update({
+          name: editName,
+          phone: editPhone || null,
+          email: editEmail || null,
+          address: editAddress || null,
+          notes: editNotes || null,
+        })
+        .eq('id', clientId)
+        .select()
+
+      if (error) throw error
+      if (data && data[0]) {
+        setClient({ ...client, ...data[0] })
+      }
+      setOpenEditClient(false)
+    } catch (err) {
+      console.error('Error updating client:', err)
+      alert('Error al actualizar el cliente.')
+    }
   }
 
-  const handleDeleteClient = () => {
+  const handleDeleteClient = async () => {
     if (confirm('¿Estás seguro de que deseas eliminar este cliente?')) {
-      router.push('/admin/clientes')
+      try {
+        const { error } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', clientId)
+
+        if (error) throw error
+        router.push('/admin/clientes')
+      } catch (err) {
+        console.error('Error deleting client:', err)
+        alert('Error al eliminar el cliente.')
+      }
     }
   }
 
@@ -161,11 +193,11 @@ export default function ClientDetailPage() {
   const handleOpenEditPet = (pet: any) => {
     setEditingPet(pet)
     setPetName(pet.name)
-    setPetBreed(pet.breed)
-    setPetSex(pet.sex)
-    setPetWeight(String(pet.weight))
-    setPetAgeYears(String(pet.ageYears))
-    setPetAgeMonths(String(pet.ageMonths))
+    setPetBreed(pet.breed || '')
+    setPetSex(pet.sex || 'male')
+    setPetWeight(pet.weight ? String(pet.weight) : '')
+    setPetAgeYears(pet.age_years ? String(pet.age_years) : '')
+    setPetAgeMonths(pet.age_months ? String(pet.age_months) : '')
     setPetNeeds(pet.needs || '')
     setPetNotes(pet.notes || '')
     setPetPhoto(pet.photo || null)
@@ -183,36 +215,69 @@ export default function ClientDetailPage() {
     }
   }
 
-  const handleSavePet = () => {
+  const handleSavePet = async () => {
     if (!petName) {
       alert('El nombre de la mascota es obligatorio.')
       return
     }
 
-    const petObj = {
-      id: editingPet ? editingPet.id : String(Date.now()),
-      name: petName,
-      breed: petBreed,
-      sex: petSex,
-      weight: Number(petWeight) || 0,
-      ageYears: Number(petAgeYears) || 0,
-      ageMonths: Number(petAgeMonths) || 0,
-      needs: petNeeds,
-      notes: petNotes,
-      photo: petPhoto,
-    }
+    try {
+      const petObj = {
+        client_id: clientId,
+        name: petName,
+        breed: petBreed || null,
+        sex: petSex,
+        weight: Number(petWeight) || 0,
+        age_years: Number(petAgeYears) || 0,
+        age_months: Number(petAgeMonths) || 0,
+        needs: petNeeds || null,
+        notes: petNotes || null,
+        photo: petPhoto || null,
+      }
 
-    if (editingPet) {
-      setPets((prev) => prev.map((p) => (p.id === editingPet.id ? petObj : p)))
-    } else {
-      setPets((prev) => [...prev, petObj])
+      if (editingPet) {
+        const { data, error } = await supabase
+          .from('pets')
+          .update(petObj)
+          .eq('id', editingPet.id)
+          .select()
+
+        if (error) throw error
+        if (data && data[0]) {
+          setPets((prev) => prev.map((p) => (p.id === editingPet.id ? data[0] : p)))
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('pets')
+          .insert([petObj])
+          .select()
+
+        if (error) throw error
+        if (data && data[0]) {
+          setPets((prev) => [...prev, data[0]])
+        }
+      }
+      setOpenPetDialog(false)
+    } catch (err) {
+      console.error('Error saving pet:', err)
+      alert('Error al guardar la mascota.')
     }
-    setOpenPetDialog(false)
   }
 
-  const handleDeletePet = (petId: string) => {
+  const handleDeletePet = async (petId: string) => {
     if (confirm('¿Estás seguro de que deseas eliminar esta mascota?')) {
-      setPets((prev) => prev.filter((p) => p.id !== petId))
+      try {
+        const { error } = await supabase
+          .from('pets')
+          .delete()
+          .eq('id', petId)
+
+        if (error) throw error
+        setPets((prev) => prev.filter((p) => p.id !== petId))
+      } catch (err) {
+        console.error('Error deleting pet:', err)
+        alert('Error al eliminar la mascota.')
+      }
     }
   }
 
@@ -236,7 +301,9 @@ export default function ClientDetailPage() {
           </Avatar>
           <div>
             <h1 className="font-display text-3xl font-bold tracking-tight">{client.name}</h1>
-            <p className="text-muted-foreground text-sm">Cliente desde {client.createdAt || 'Enero 2024'}</p>
+            <p className="text-muted-foreground text-sm">
+              Cliente desde {client.created_at ? new Date(client.created_at).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) : 'Enero 2024'}
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -314,7 +381,7 @@ export default function ClientDetailPage() {
                   <CardTitle className="flex items-center gap-2 font-display text-lg">
                     <Dog className="h-4 w-4 text-primary" />
                     {pet.name}
-                    <Badge variant="outline" className="text-xs">{pet.breed}</Badge>
+                    <Badge variant="outline" className="text-xs">{pet.breed || 'Sin raza'}</Badge>
                     <Badge variant="outline" className="text-xs">{pet.sex === 'male' ? '♂ Macho' : '♀ Hembra'}</Badge>
                   </CardTitle>
                   <div className="flex gap-1">
@@ -335,8 +402,8 @@ export default function ClientDetailPage() {
                 )}
                 <div className="flex-1 space-y-2">
                   <div className="flex gap-6 text-muted-foreground">
-                    <span>Peso: <strong className="text-foreground">{pet.weight} kg</strong></span>
-                    <span>Edad: <strong className="text-foreground">{pet.ageYears} años {pet.ageMonths} meses</strong></span>
+                    <span>Peso: <strong className="text-foreground">{pet.weight || 0} kg</strong></span>
+                    <span>Edad: <strong className="text-foreground">{pet.age_years || 0} años {pet.age_months || 0} meses</strong></span>
                   </div>
                   {pet.needs && (
                     <div>
@@ -370,11 +437,11 @@ export default function ClientDetailPage() {
                   <div key={apt.id} className="flex items-center gap-4 p-4 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground w-28 shrink-0">
                       <Calendar className="h-4 w-4" />
-                      <span>{apt.date}</span>
+                      <span>{new Date(apt.date).toLocaleDateString('es-ES')}</span>
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{apt.service}</p>
-                      <p className="text-muted-foreground text-xs">{apt.pet} · {apt.time}</p>
+                      <p className="text-muted-foreground text-xs">{apt.pet_name} · {apt.time}</p>
                     </div>
                     <span className="font-medium">{apt.price}€</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge[apt.status]?.className || ''}`}>
