@@ -23,6 +23,7 @@ const navItems = [
   { href: '/admin/calendario', icon: CalendarDays, label: 'Calendario' },
   { href: '/admin/contabilidad', icon: Wallet, label: 'Contabilidad' },
   { href: '/admin/tarifas', icon: Tag, label: 'Tarifas' },
+  { href: '/admin/galeria', icon: Images, label: 'Galería' },
 ]
 
 export default function AdminSidebar() {
