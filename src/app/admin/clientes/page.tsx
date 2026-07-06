@@ -123,7 +123,7 @@ export default function ClientesPage() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Clientes</h1>
@@ -184,61 +184,63 @@ export default function ClientesPage() {
       </div>
 
       {/* Client list */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {filtered.map((client) => (
-          <Card key={client.id} className="hover:shadow-sm transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
+          <Card key={client.id} className="hover:shadow-md transition-all flex flex-col justify-between border border-border/60">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+              <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 shrink-0">
                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                     {client.name.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-semibold">{client.name}</p>
-                    <Badge variant="secondary" className="text-xs">
-                      {client.totalAppointments} citas
+                <div>
+                  <CardTitle className="text-base font-semibold font-display truncate max-w-[150px]">{client.name}</CardTitle>
+                  <span className="text-[10px] text-muted-foreground">{client.totalAppointments} citas</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 rounded-lg" onClick={(e) => handleDeleteClient(client.id, e)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                  <Link href={`/admin/clientes/${client.id}`}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 pb-4">
+              <div className="space-y-1.5 text-xs text-muted-foreground border-t border-border/40 pt-3">
+                {client.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground/75 shrink-0" />
+                    <span className="truncate">{client.email}</span>
+                  </div>
+                )}
+                {client.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground/75 shrink-0" />
+                    <span>{client.phone}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="border-t border-border/40 pt-3 space-y-2">
+                <div className="flex flex-wrap gap-1">
+                  {client.pets.map((pet) => (
+                    <Badge key={pet.name} variant="outline" className="text-[10px] py-0.5 px-1.5 gap-1 border-primary/20 bg-primary/[0.02] text-primary">
+                      <Dog className="h-2.5 w-2.5" />
+                      {pet.name}
                     </Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                    {client.email && (
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {client.email}
-                      </span>
-                    )}
-                    {client.phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        {client.phone}
-                      </span>
-                    )}
-                  </div>
+                  ))}
+                  {client.pets.length === 0 && (
+                    <span className="text-[11px] text-muted-foreground italic">Sin mascotas</span>
+                  )}
                 </div>
-
-                <div className="hidden sm:flex flex-col items-end gap-1">
-                  <div className="flex gap-1 flex-wrap justify-end">
-                    {client.pets.map((pet) => (
-                      <Badge key={pet.name} variant="outline" className="text-xs gap-1">
-                        <Dog className="h-3 w-3" />
-                        {pet.name}
-                      </Badge>
-                    ))}
-                  </div>
-                  <span className="text-xs text-muted-foreground">Última: {client.lastAppointment}</span>
-                </div>
-
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9 rounded-lg" onClick={(e) => handleDeleteClient(client.id, e)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                  <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-lg">
-                    <Link href={`/admin/clientes/${client.id}`}>
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
+                <div className="text-[10px] text-muted-foreground flex justify-between">
+                  <span>Última cita:</span>
+                  <span className="font-medium text-foreground">{client.lastAppointment}</span>
                 </div>
               </div>
             </CardContent>
@@ -246,7 +248,7 @@ export default function ClientesPage() {
         ))}
 
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="col-span-full text-center py-12 text-muted-foreground">
             <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p>No se encontraron clientes</p>
           </div>
