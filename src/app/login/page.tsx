@@ -6,15 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { PawPrint, Mail, Lock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { PawPrint, Mail, Lock, Loader2, AlertCircle } from 'lucide-react'
 import { useSearchParams, useRouter } from 'next/navigation'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loginMethod, setLoginMethod] = useState<'password' | 'magic'>('password')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -26,63 +24,46 @@ function LoginForm() {
     setError(null)
 
     const supabase = createClient()
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-    if (loginMethod === 'password') {
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (authError) {
-        if (authError.message === 'Invalid login credentials') {
-          setError('Email o contraseña incorrectos.')
-        } else {
-          setError(authError.message)
-        }
-        setLoading(false)
+    if (authError) {
+      if (authError.message === 'Invalid login credentials') {
+        setError('Email o contraseña incorrectos.')
       } else {
-        router.refresh()
-        router.push('/admin/dashboard')
-      }
-    } else {
-      // Magic Link Login
-      const { error: authError } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
-        },
-      })
-
-      if (authError) {
         setError(authError.message)
-        setLoading(false)
-      } else {
-        setSent(true)
-        setLoading(false)
       }
+      setLoading(false)
+    } else {
+      router.refresh()
+      router.push('/admin/dashboard')
     }
   }
 
-  if (sent) {
-    return (
-      <div className="text-center py-4">
-        <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-3" />
-        <h3 className="font-semibold mb-2">¡Enlace enviado!</h3>
-        <p className="text-muted-foreground text-sm">
-          Hemos enviado un enlace mágico a{' '}
-          <strong>{email}</strong>.
-          Revisa tu bandeja de entrada y haz clic en el enlace para acceder.
-        </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-4"
-          onClick={() => setSent(false)}
-        >
-          Volver
-        </Button>
-      </div>
-    )
+  const handleDirectLogin = async () => {
+    setLoading(true)
+    setError(null)
+
+    const supabase = createClient()
+    const directPassword = process.env.NEXT_PUBLIC_EDITOR_PASSWORD || 'xamape1234'
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: 'xamape@gmail.com',
+      password: directPassword,
+    })
+
+    if (authError) {
+      console.error('Direct login error:', authError)
+      setError(
+        'Error en el acceso directo. Asegúrate de configurar la contraseña para xamape@gmail.com en Supabase y .env.local.'
+      )
+      setLoading(false)
+    } else {
+      router.refresh()
+      router.push('/admin/dashboard')
+    }
   }
 
   return (
@@ -94,36 +75,25 @@ function LoginForm() {
         </div>
       )}
 
-      {/* Tab Switcher */}
-      <div className="flex rounded-xl bg-muted p-1 mb-4">
-        <button
-          type="button"
-          onClick={() => {
-            setLoginMethod('password')
-            setError(null)
-          }}
-          className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
-            loginMethod === 'password'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Contraseña
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setLoginMethod('magic')
-            setError(null)
-          }}
-          className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all ${
-            loginMethod === 'magic'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Enlace mágico
-        </button>
+      {/* Direct Access Button for Editor */}
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full border-primary/30 hover:bg-primary/[0.03] text-primary rounded-xl mb-4 font-semibold gap-1.5 h-11"
+        onClick={handleDirectLogin}
+        disabled={loading}
+      >
+        <PawPrint className="h-4 w-4 shrink-0" />
+        Acceso directo (Editor: xamape)
+      </Button>
+
+      <div className="relative flex items-center justify-center my-4">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <span className="relative bg-background px-3 text-[10px] uppercase text-muted-foreground tracking-wider">
+          O con contraseña
+        </span>
       </div>
 
       <form onSubmit={handleLogin} className="space-y-4">
@@ -143,46 +113,36 @@ function LoginForm() {
           </div>
         </div>
 
-        {loginMethod === 'password' && (
-          <div className="space-y-1.5">
-            <Label htmlFor="password">Contraseña</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                className="pl-9"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Contraseña</Label>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              className="pl-9"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
           </div>
-        )}
+        </div>
 
         {error && (
-          <p className="text-destructive text-xs font-medium">{error}</p>
+          <p className="text-destructive text-xs font-medium leading-relaxed">{error}</p>
         )}
 
-        <Button type="submit" className="w-full rounded-xl" disabled={loading}>
+        <Button type="submit" className="w-full rounded-xl h-11" disabled={loading}>
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {loginMethod === 'password' ? 'Iniciando sesión...' : 'Enviando enlace...'}
+              Iniciando sesión...
             </>
-          ) : loginMethod === 'password' ? (
-            'Iniciar sesión'
           ) : (
-            'Enviar enlace mágico'
+            'Iniciar sesión'
           )}
         </Button>
-
-        {loginMethod === 'magic' && (
-          <p className="text-center text-[10px] text-muted-foreground mt-1">
-            Te enviaremos un enlace de acceso por email. Sin contraseña.
-          </p>
-        )}
       </form>
     </>
   )
