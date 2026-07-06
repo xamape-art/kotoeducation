@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -244,7 +243,7 @@ export default function ClientDetailPage() {
         needs: petNeeds || null,
         notes: petNotes || null,
         photo_url: petPhoto || null,
-        species: 'dog', // set required check constraint column
+        species: 'dog',
       }
 
       if (editingPet) {
@@ -298,7 +297,8 @@ export default function ClientDetailPage() {
     .reduce((sum, a) => sum + a.price, 0)
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-6xl">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <Button asChild variant="ghost" size="icon">
           <Link href="/admin/clientes">
@@ -330,6 +330,7 @@ export default function ClientDetailPage() {
         </div>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total citas', value: appointments.length },
@@ -346,117 +347,146 @@ export default function ClientDetailPage() {
         ))}
       </div>
 
-      <Tabs defaultValue="info">
-        <TabsList>
-          <TabsTrigger value="info">Info</TabsTrigger>
-          <TabsTrigger value="mascotas">Mascotas</TabsTrigger>
-          <TabsTrigger value="historial">Historial</TabsTrigger>
-          <TabsTrigger value="notas">Notas</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="info" className="space-y-4 mt-4">
-          <Card>
-            <CardContent className="p-5 space-y-4">
-              {client.email && (
-                <div className="flex items-center gap-3 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <a href={`mailto:${client.email}`} className="hover:underline">{client.email}</a>
-                </div>
-              )}
-              {client.phone && (
-                <div className="flex items-center gap-3 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+      {/* Dashboard Content Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Left Column: Info & Notes */}
+        <div className="space-y-6">
+          <Card className="border border-border/60 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-display text-base font-semibold">Información de contacto</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm pt-2">
+              <div className="flex items-center gap-3">
+                <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                {client.email ? (
+                  <a href={`mailto:${client.email}`} className="hover:underline truncate">{client.email}</a>
+                ) : (
+                  <span className="text-muted-foreground italic">Sin email</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                {client.phone ? (
                   <a href={`tel:${client.phone}`} className="hover:underline">{client.phone}</a>
-                </div>
-              )}
-              {client.address && (
-                <div className="flex items-center gap-3 text-sm">
-                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : (
+                  <span className="text-muted-foreground italic">Sin teléfono</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                {client.address ? (
                   <span>{client.address}</span>
+                ) : (
+                  <span className="text-muted-foreground italic">Sin dirección</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border/60 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-display text-base font-semibold">Notas adicionales</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm pt-2">
+              {client.notes ? (
+                <p className="text-muted-foreground whitespace-pre-wrap">{client.notes}</p>
+              ) : (
+                <p className="text-muted-foreground italic">Sin notas escritas.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Pets & Appointments */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Pets section */}
+          <Card className="border border-border/60 shadow-sm">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="font-display text-lg flex items-center gap-2">
+                <Dog className="h-5 w-5 text-primary" />
+                Mascotas
+              </CardTitle>
+              <Button size="sm" onClick={handleOpenAddPet} className="h-8">
+                <Plus className="h-4 w-4 mr-1" />
+                Añadir mascota
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pets.map((pet) => (
+                <div key={pet.id} className="p-4 border rounded-xl hover:shadow-sm transition-shadow bg-muted/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-base">{pet.name}</p>
+                      <Badge variant="outline" className="text-xs bg-background">{pet.breed || 'Sin raza'}</Badge>
+                      <Badge variant="outline" className="text-xs bg-background">{pet.sex === 'male' ? '♂ Macho' : '♀ Hembra'}</Badge>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEditPet(pet)}>
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeletePet(pet.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 text-sm">
+                    {pet.photo_url && (
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0 border bg-muted">
+                        <img src={pet.photo_url} alt={pet.name} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-2">
+                      <div className="flex gap-6 text-muted-foreground text-xs">
+                        <span>Peso: <strong className="text-foreground">{pet.weight_kg || 0} kg</strong></span>
+                        <span>Edad: <strong className="text-foreground">{pet.age_years || 0} años {pet.age_months || 0} meses</strong></span>
+                      </div>
+                      {pet.needs && (
+                        <div>
+                          <p className="font-medium text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Necesidades especiales</p>
+                          <p className="text-muted-foreground text-xs">{pet.needs}</p>
+                        </div>
+                      )}
+                      {pet.notes && (
+                        <div>
+                          <p className="font-medium text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Notas</p>
+                          <p className="text-muted-foreground text-xs">{pet.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {pets.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground border border-dashed rounded-xl">
+                  <Dog className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-xs">Sin mascotas registradas</p>
                 </div>
               )}
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="mascotas" className="space-y-4 mt-4">
-          <div className="flex justify-end">
-            <Button size="sm" onClick={handleOpenAddPet}>
-              <Plus className="h-4 w-4 mr-2" />
-              Añadir mascota
-            </Button>
-          </div>
-          {pets.map((pet) => (
-            <Card key={pet.id}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 font-display text-lg">
-                    <Dog className="h-4 w-4 text-primary" />
-                    {pet.name}
-                    <Badge variant="outline" className="text-xs">{pet.breed || 'Sin raza'}</Badge>
-                    <Badge variant="outline" className="text-xs">{pet.sex === 'male' ? '♂ Macho' : '♀ Hembra'}</Badge>
-                  </CardTitle>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleOpenEditPet(pet)}>
-                      <Edit className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeletePet(pet.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col sm:flex-row gap-4 text-sm pb-4">
-                {pet.photo_url && (
-                  <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0 border bg-muted">
-                    <img src={pet.photo_url} alt={pet.name} className="w-full h-full object-cover" />
-                  </div>
-                )}
-                <div className="flex-1 space-y-2">
-                  <div className="flex gap-6 text-muted-foreground">
-                    <span>Peso: <strong className="text-foreground">{pet.weight_kg || 0} kg</strong></span>
-                    <span>Edad: <strong className="text-foreground">{pet.age_years || 0} años {pet.age_months || 0} meses</strong></span>
-                  </div>
-                  {pet.needs && (
-                    <div>
-                      <p className="font-medium text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Necesidades especiales</p>
-                      <p className="text-muted-foreground">{pet.needs}</p>
-                    </div>
-                  )}
-                  {pet.notes && (
-                    <div>
-                      <p className="font-medium text-xs uppercase tracking-wide text-muted-foreground mb-0.5">Notas</p>
-                      <p className="text-muted-foreground">{pet.notes}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {pets.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground border border-dashed rounded-xl">
-              <Dog className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Sin mascotas registradas</p>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="historial" className="mt-4">
-          <Card>
+          {/* Appointments history section */}
+          <Card className="border border-border/60 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="font-display text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Historial de citas
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y">
                 {appointments.map((apt) => (
-                  <div key={apt.id} className="flex items-center gap-4 p-4 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground w-28 shrink-0">
-                      <Calendar className="h-4 w-4" />
+                  <div key={apt.id} className="flex items-center gap-4 p-4 text-xs">
+                    <div className="flex items-center gap-1.5 text-muted-foreground w-24 shrink-0">
+                      <Calendar className="h-3.5 w-3.5" />
                       <span>{new Date(apt.date).toLocaleDateString('es-ES')}</span>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{apt.service}</p>
-                      <p className="text-muted-foreground text-xs">{apt.pet_name} · {apt.time}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{apt.service}</p>
+                      <p className="text-muted-foreground text-[10px]">{apt.pet_name} · {apt.time}</p>
                     </div>
-                    <span className="font-medium">{apt.price}€</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusBadge[apt.status]?.className || ''}`}>
+                    <span className="font-semibold text-right w-12 shrink-0">{apt.price}€</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusBadge[apt.status]?.className || ''}`}>
                       {statusBadge[apt.status]?.label || apt.status}
                     </span>
                   </div>
@@ -464,25 +494,14 @@ export default function ClientDetailPage() {
                 {appointments.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Sin historial de citas</p>
+                    <p className="text-xs">Sin historial de citas</p>
                   </div>
                 )}
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="notas" className="mt-4">
-          <Card>
-            <CardContent className="p-5">
-              <div className="flex items-start gap-3">
-                <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <p className="text-sm text-muted-foreground">{client.notes || 'Sin notas adicionales.'}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
 
       {/* Edit Client Dialog */}
       <Dialog open={openEditClient} onOpenChange={setOpenEditClient}>
