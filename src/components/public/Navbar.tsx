@@ -37,10 +37,10 @@ export default function Navbar() {
             />
           </div>
           <div className="hidden sm:block">
-            <span className="font-display font-bold text-lg text-foreground tracking-tight leading-none block">
+            <span className="font-display font-medium text-base text-foreground tracking-wide leading-none block mb-0.5">
               Koto Education
             </span>
-            <span className="text-[11px] text-muted-foreground tracking-widest uppercase">
+            <span className="text-[9px] text-muted-foreground tracking-[0.2em] uppercase font-light">
               Terrassa
             </span>
           </div>
@@ -85,8 +85,8 @@ export default function Navbar() {
                 <Image src="/logo.png" alt="Koto Education" fill className="object-cover" sizes="40px" />
               </div>
               <div>
-                <span className="font-display font-bold text-base text-foreground block">Koto Education</span>
-                <span className="text-[10px] text-muted-foreground tracking-widest uppercase">Terrassa</span>
+                <span className="font-display font-medium text-[15px] text-foreground tracking-wide block mb-0.5">Koto Education</span>
+                <span className="text-[9px] text-muted-foreground tracking-[0.2em] uppercase font-light">Terrassa</span>
               </div>
             </Link>
             <nav className="flex flex-col gap-1">
