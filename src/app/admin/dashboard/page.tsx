@@ -372,7 +372,7 @@ export default function DashboardPage() {
       </div>
 
       <Dialog open={openRequestModal} onOpenChange={setOpenRequestModal}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:!max-w-lg">
           <DialogHeader>
             <DialogTitle>Detalles de la solicitud</DialogTitle>
           </DialogHeader>
