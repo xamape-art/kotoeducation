@@ -34,6 +34,12 @@ const statusBadge: Record<string, { label: string; className: string }> = {
   cancelled: { label: 'Cancelada', className: 'bg-red-100 text-red-600' },
 }
 
+// UUID validation helper
+const validateUuid = (uuid: string) => {
+  const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return regex.test(uuid);
+}
+
 export default function ClientDetailPage() {
   const supabase = createClient()
   const params = useParams()
@@ -68,6 +74,11 @@ export default function ClientDetailPage() {
   const [petPhoto, setPetPhoto] = useState<string | null>(null)
 
   const fetchClientData = async () => {
+    if (!validateUuid(clientId)) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true)
       const { data: clientData, error: clientErr } = await supabase
@@ -113,7 +124,7 @@ export default function ClientDetailPage() {
   if (!client) {
     return (
       <div className="text-center py-12 max-w-4xl space-y-4">
-        <p className="text-muted-foreground">No se encontró el cliente o no existe.</p>
+        <p className="text-muted-foreground">No se encontró el cliente o el ID no es válido.</p>
         <Button asChild variant="outline">
           <Link href="/admin/clientes">Volver a Clientes</Link>
         </Button>
@@ -195,12 +206,12 @@ export default function ClientDetailPage() {
     setPetName(pet.name)
     setPetBreed(pet.breed || '')
     setPetSex(pet.sex || 'male')
-    setPetWeight(pet.weight ? String(pet.weight) : '')
+    setPetWeight(pet.weight_kg ? String(pet.weight_kg) : '')
     setPetAgeYears(pet.age_years ? String(pet.age_years) : '')
     setPetAgeMonths(pet.age_months ? String(pet.age_months) : '')
     setPetNeeds(pet.needs || '')
     setPetNotes(pet.notes || '')
-    setPetPhoto(pet.photo || null)
+    setPetPhoto(pet.photo_url || null)
     setOpenPetDialog(true)
   }
 
@@ -227,12 +238,13 @@ export default function ClientDetailPage() {
         name: petName,
         breed: petBreed || null,
         sex: petSex,
-        weight: Number(petWeight) || 0,
+        weight_kg: Number(petWeight) || 0,
         age_years: Number(petAgeYears) || 0,
         age_months: Number(petAgeMonths) || 0,
         needs: petNeeds || null,
         notes: petNotes || null,
-        photo: petPhoto || null,
+        photo_url: petPhoto || null,
+        species: 'dog', // set required check constraint column
       }
 
       if (editingPet) {
@@ -395,14 +407,14 @@ export default function ClientDetailPage() {
                 </div>
               </CardHeader>
               <CardContent className="flex flex-col sm:flex-row gap-4 text-sm pb-4">
-                {pet.photo && (
+                {pet.photo_url && (
                   <div className="relative w-24 h-24 rounded-xl overflow-hidden shrink-0 border bg-muted">
-                    <img src={pet.photo} alt={pet.name} className="w-full h-full object-cover" />
+                    <img src={pet.photo_url} alt={pet.name} className="w-full h-full object-cover" />
                   </div>
                 )}
                 <div className="flex-1 space-y-2">
                   <div className="flex gap-6 text-muted-foreground">
-                    <span>Peso: <strong className="text-foreground">{pet.weight || 0} kg</strong></span>
+                    <span>Peso: <strong className="text-foreground">{pet.weight_kg || 0} kg</strong></span>
                     <span>Edad: <strong className="text-foreground">{pet.age_years || 0} años {pet.age_months || 0} meses</strong></span>
                   </div>
                   {pet.needs && (
