@@ -375,6 +375,18 @@ export default function DashboardPage() {
         <DialogContent className="sm:!max-w-lg">
           <DialogHeader>
             <DialogTitle>Detalles de la solicitud</DialogTitle>
+            {selectedRequest?.created_at && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Recibida el {new Date(selectedRequest.created_at).toLocaleDateString('es-ES', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                })} a las {new Date(selectedRequest.created_at).toLocaleTimeString('es-ES', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+            )}
           </DialogHeader>
           {selectedRequest && (
             <div className="space-y-4 pt-2 text-sm">
