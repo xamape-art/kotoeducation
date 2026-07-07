@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { Resend } from 'resend'
 
 export async function POST(request: Request) {
   try {
@@ -30,80 +31,73 @@ export async function POST(request: Request) {
       )
     }
 
-    // Send email notification via Resend if API key is present
+    // Send email notification via Resend SDK if API key is present
     const resendApiKey = process.env.RESEND_API_KEY
     if (resendApiKey) {
       try {
-        const res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${resendApiKey}`,
-          },
-          body: JSON.stringify({
-            from: 'Koto Education <onboarding@resend.dev>',
-            to: 'kotoeducation@gmail.com',
-            subject: `Nueva solicitud de contacto: ${body.name}`,
-            html: `
-              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                <h2 style="color: #38251e; border-bottom: 2px solid #C47A35; padding-bottom: 10px; margin-top: 0;">¡Nueva Solicitud de Contacto! 🐾</h2>
-                <p>Has recibido una nueva consulta de un cliente potencial desde la web:</p>
-                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-                  <tr style="background-color: #fcfbfa;">
-                    <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee; width: 180px;">Nombre</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.name}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Email</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="mailto:${body.email}">${body.email}</a></td>
-                  </tr>
-                  <tr style="background-color: #fcfbfa;">
-                    <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Teléfono</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.phone || 'No indicado'}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Servicio solicitado</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-transform: capitalize;">${body.serviceType}</td>
-                  </tr>
-                  <tr style="background-color: #fcfbfa;">
-                    <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Fecha preferida</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.preferredDate || 'No indicada'}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Nombre Mascota</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.petName || 'No indicado'}</td>
-                  </tr>
-                  <tr style="background-color: #fcfbfa;">
-                    <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Raza Mascota</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.petBreed || 'No indicada'}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Peso Mascota</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.petWeight ? `${body.petWeight} kg` : 'No indicado'}</td>
-                  </tr>
-                  <tr style="background-color: #fcfbfa;">
-                    <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Edad Mascota</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.petAge ? `${body.petAge} años` : 'No indicada'}</td>
-                  </tr>
-                </table>
-                <div style="background-color: #fdfaf7; border-left: 4px solid #C47A35; padding: 15px; border-radius: 4px; margin-top: 20px;">
-                  <h4 style="margin: 0 0 5px 0; color: #38251e;">Mensaje del cliente:</h4>
-                  <p style="margin: 0; color: #555; font-style: italic;">"${body.message || 'Sin mensaje adicional.'}"</p>
-                </div>
-                <p style="margin-top: 30px; font-size: 11px; color: #999; text-align: center;">Este es un mensaje automático de Koto Education.</p>
+        const resend = new Resend(resendApiKey)
+        const { data, error: emailErr } = await resend.emails.send({
+          from: 'Koto Education <onboarding@resend.dev>',
+          to: 'kotoeducation@gmail.com',
+          subject: `Nueva solicitud de contacto: ${body.name}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #38251e; border-bottom: 2px solid #C47A35; padding-bottom: 10px; margin-top: 0;">¡Nueva Solicitud de Contacto! 🐾</h2>
+              <p>Has recibido una nueva consulta de un cliente potencial desde la web:</p>
+              <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                <tr style="background-color: #fcfbfa;">
+                  <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee; width: 180px;">Nombre</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.name}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Email</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee;"><a href="mailto:${body.email}">${body.email}</a></td>
+                </tr>
+                <tr style="background-color: #fcfbfa;">
+                  <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Teléfono</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.phone || 'No indicado'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Servicio solicitado</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee; text-transform: capitalize;">${body.serviceType}</td>
+                </tr>
+                <tr style="background-color: #fcfbfa;">
+                  <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Fecha preferida</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.preferredDate || 'No indicada'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Nombre Mascota</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.petName || 'No indicado'}</td>
+                </tr>
+                <tr style="background-color: #fcfbfa;">
+                  <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Raza Mascota</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.petBreed || 'No indicada'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Peso Mascota</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.petWeight ? `${body.petWeight} kg` : 'No indicado'}</td>
+                </tr>
+                <tr style="background-color: #fcfbfa;">
+                  <td style="padding: 10px; font-weight: bold; border-bottom: 1px solid #eee;">Edad Mascota</td>
+                  <td style="padding: 10px; border-bottom: 1px solid #eee;">${body.petAge ? `${body.petAge} años` : 'No indicada'}</td>
+                </tr>
+              </table>
+              <div style="background-color: #fdfaf7; border-left: 4px solid #C47A35; padding: 15px; border-radius: 4px; margin-top: 20px;">
+                <h4 style="margin: 0 0 5px 0; color: #38251e;">Mensaje del cliente:</h4>
+                <p style="margin: 0; color: #555; font-style: italic;">"${body.message || 'Sin mensaje adicional.'}"</p>
               </div>
-            `,
-          }),
+              <p style="margin-top: 30px; font-size: 11px; color: #999; text-align: center;">Este es un mensaje automático de Koto Education.</p>
+            </div>
+          `,
         })
 
-        if (!res.ok) {
-          const errorResponse = await res.text()
-          console.error(`Resend API error status: ${res.status}, response:`, errorResponse)
+        if (emailErr) {
+          console.error('Resend SDK error:', emailErr)
         } else {
-          console.log('Email notification sent successfully via Resend.')
+          console.log('Email notification sent successfully via Resend SDK:', data)
         }
       } catch (emailErr) {
-        console.error('Failed to send email notification:', emailErr)
+        console.error('Failed to send email notification via Resend SDK:', emailErr)
       }
     } else {
       console.warn('RESEND_API_KEY is not defined. Email notification was skipped.')
