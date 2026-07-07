@@ -336,7 +336,20 @@ export default function DashboardPage() {
                 {requests.map((req) => (
                   <div key={req.id} className="flex items-center gap-3 text-xs p-3 rounded-xl border bg-muted/20">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{req.name}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold text-sm truncate">{req.name}</p>
+                        {req.created_at && (
+                          <span className="text-[10px] text-muted-foreground shrink-0 font-normal">
+                            {new Date(req.created_at).toLocaleDateString('es-ES', {
+                              day: '2-digit',
+                              month: '2-digit',
+                            })} a las {new Date(req.created_at).toLocaleTimeString('es-ES', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-muted-foreground text-[11px] mt-0.5">
                         {req.pet_name ? `${req.pet_name} (${req.pet_breed || 'Raza no indicada'})` : 'Sin mascota'} · <span className="capitalize">{req.service_type}</span>
                       </p>
