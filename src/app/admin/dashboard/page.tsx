@@ -184,6 +184,26 @@ export default function DashboardPage() {
     }
   }
 
+  const handleDeleteRequest = async () => {
+    if (!selectedRequest) return
+    if (!confirm('¿Estás seguro de que deseas eliminar esta solicitud de contacto?')) return
+
+    try {
+      const { error } = await supabase
+        .from('contact_requests')
+        .delete()
+        .eq('id', selectedRequest.id)
+
+      if (error) throw error
+      
+      setRequests((prev) => prev.filter((r) => r.id !== selectedRequest.id))
+      setOpenRequestModal(false)
+    } catch (err) {
+      console.error('Error deleting request:', err)
+      alert('Error al eliminar la solicitud.')
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-6xl">
       <div>
@@ -457,9 +477,14 @@ export default function DashboardPage() {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-3">
-                  <Button variant="ghost" size="sm" onClick={() => setOpenRequestModal(false)} className="sm:order-first order-last justify-center">
-                    Cerrar
-                  </Button>
+                  <div className="flex gap-2 justify-center sm:justify-start">
+                    <Button variant="ghost" size="sm" onClick={() => setOpenRequestModal(false)} className="justify-center">
+                      Cerrar
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleDeleteRequest} className="text-destructive hover:text-destructive hover:bg-destructive/10 justify-center">
+                      Eliminar
+                    </Button>
+                  </div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     {selectedRequest.status === 'new' && (
                       <Button variant="outline" size="sm" onClick={() => handleUpdateStatus('contacted')} className="justify-center">
