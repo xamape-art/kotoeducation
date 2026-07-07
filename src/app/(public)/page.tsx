@@ -228,19 +228,16 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="relative">
               <div
-                className="rounded-3xl overflow-hidden aspect-square flex items-center justify-center"
-                style={{ backgroundColor: '#F5EDE3' }}
+                className="rounded-3xl overflow-hidden aspect-square relative shadow-md"
               >
-                <div className="text-center p-12">
-                  <Image
-                    src="/logo.png"
-                    alt="Koto Education"
-                    width={220}
-                    height={220}
-                    className="object-contain mx-auto"
-                  />
-                  <p className="text-muted-foreground text-sm mt-4">Foto de Carla con Koto</p>
-                </div>
+                <Image
+                  src="/carla-koto.jpg"
+                  alt="Carla con Koto"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 500px"
+                  className="object-cover"
+                  priority
+                />
               </div>
               <div
                 className="absolute -bottom-5 -right-5 rounded-2xl p-4 shadow-xl"
