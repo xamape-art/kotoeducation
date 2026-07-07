@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const resendApiKey = process.env.RESEND_API_KEY
     if (resendApiKey) {
       try {
-        await fetch('https://api.resend.com/emails', {
+        const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -95,9 +95,18 @@ export async function POST(request: Request) {
             `,
           }),
         })
+
+        if (!res.ok) {
+          const errorResponse = await res.text()
+          console.error(`Resend API error status: ${res.status}, response:`, errorResponse)
+        } else {
+          console.log('Email notification sent successfully via Resend.')
+        }
       } catch (emailErr) {
         console.error('Failed to send email notification:', emailErr)
       }
+    } else {
+      console.warn('RESEND_API_KEY is not defined. Email notification was skipped.')
     }
 
     return NextResponse.json({ success: true }, { status: 200 })
