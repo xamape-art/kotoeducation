@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 
 export async function POST(request: Request) {
   try {
@@ -31,13 +31,22 @@ export async function POST(request: Request) {
       )
     }
 
-    // Send email notification via Resend SDK if API key is present
-    const resendApiKey = process.env.RESEND_API_KEY
-    if (resendApiKey) {
+    // Send email notification via Gmail SMTP using Nodemailer
+    const gmailUser = process.env.GMAIL_USER
+    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD
+
+    if (gmailUser && gmailAppPassword) {
       try {
-        const resend = new Resend(resendApiKey)
-        const { data, error: emailErr } = await resend.emails.send({
-          from: 'Koto Education <onboarding@resend.dev>',
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: gmailUser,
+            pass: gmailAppPassword,
+          },
+        })
+
+        const mailOptions = {
+          from: `"Koto Education" <${gmailUser}>`,
           to: 'kotoeducation@gmail.com',
           subject: `Nueva solicitud de contacto: ${body.name}`,
           html: `
@@ -89,18 +98,15 @@ export async function POST(request: Request) {
               <p style="margin-top: 30px; font-size: 11px; color: #999; text-align: center;">Este es un mensaje automático de Koto Education.</p>
             </div>
           `,
-        })
-
-        if (emailErr) {
-          console.error('Resend SDK error:', emailErr)
-        } else {
-          console.log('Email notification sent successfully via Resend SDK:', data)
         }
+
+        const info = await transporter.sendMail(mailOptions)
+        console.log('Email sent successfully via Gmail SMTP:', info.messageId)
       } catch (emailErr) {
-        console.error('Failed to send email notification via Resend SDK:', emailErr)
+        console.error('Failed to send email notification via Gmail SMTP:', emailErr)
       }
     } else {
-      console.warn('RESEND_API_KEY is not defined. Email notification was skipped.')
+      console.warn('Gmail SMTP credentials (GMAIL_USER and GMAIL_APP_PASSWORD) are not defined in environment variables.')
     }
 
     return NextResponse.json({ success: true }, { status: 200 })
