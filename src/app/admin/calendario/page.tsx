@@ -61,8 +61,9 @@ const mockAppointments = [
 ]
 
 export default function CalendarioPage() {
-  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 6, 1))
-  const [selectedDay, setSelectedDay] = useState<Date | null>(new Date(2025, 6, 7))
+  const today = new Date()
+  const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
+  const [selectedDay, setSelectedDay] = useState<Date | null>(today)
   const [openDialog, setOpenDialog] = useState(false)
   const [appointments, setAppointments] = useState(mockAppointments)
 
@@ -305,8 +306,9 @@ export default function CalendarioPage() {
                   variant="outline"
                   className="hidden sm:inline-flex"
                   onClick={() => {
-                    setCurrentMonth(new Date(2025, 6, 1))
-                    setSelectedDay(new Date(2025, 6, 7))
+                    const now = new Date()
+                    setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
+                    setSelectedDay(now)
                   }}
                 >
                   Hoy
@@ -342,7 +344,7 @@ export default function CalendarioPage() {
               {days.map((day) => {
                 const dayApts = getAppointmentsForDay(day)
                 const isSelected = selectedDay && isSameDay(day, selectedDay)
-                const isToday = isSameDay(day, new Date(2025, 6, 7)) // fixed mock today for demo consistency
+                const isToday = isSameDay(day, new Date())
 
                 return (
                   <button
