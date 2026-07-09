@@ -314,7 +314,7 @@ export default function CalendarioPage() {
                 <Select
                   value={newClientId}
                   onValueChange={(val) => {
-                    setNewClientId(val)
+                    setNewClientId(val || '')
                     const c = clientsList.find((c) => c.id === val)
                     if (c) setNewClient(c.name)
                     setNewPet('')
