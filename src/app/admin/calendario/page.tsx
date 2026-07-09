@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -25,11 +24,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Dog,
-  Home,
-  Heart,
   Edit,
   Trash2,
+  Loader2,
 } from 'lucide-react'
 import {
   format,
@@ -43,6 +40,7 @@ import {
   subMonths,
 } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { createClient } from '@/lib/supabase/client'
 
 const SERVICE_COLORS: Record<string, string> = {
   walk: 'border border-emerald-200 bg-emerald-100 text-emerald-900',
@@ -51,36 +49,80 @@ const SERVICE_COLORS: Record<string, string> = {
   training: 'border border-violet-200 bg-violet-100 text-violet-900',
 }
 
-const mockAppointments = [
-  { id: '1', date: new Date(2025, 6, 7), time: '09:00', client: 'Xavier M.', pet: 'Koto', service: 'Paseo', type: 'walk', price: 10, status: 'confirmed' },
-  { id: '2', date: new Date(2025, 6, 7), time: '11:30', client: 'Laura G.', pet: 'Max', service: 'Paseo', type: 'walk', price: 10, status: 'confirmed' },
-  { id: '3', date: new Date(2025, 6, 9), time: '15:00', client: 'Marc T.', pet: 'Luna', service: 'Visita', type: 'visit', price: 10, status: 'pending' },
-  { id: '4', date: new Date(2025, 6, 10), time: '09:00', client: 'Xavier M.', pet: 'Koto', service: 'Paseo', type: 'walk', price: 10, status: 'confirmed' },
-  { id: '5', date: new Date(2025, 6, 14), time: '10:00', client: 'Ana R.', pet: 'Mochi', service: 'Visita', type: 'visit', price: 10, status: 'confirmed' },
-  { id: '6', date: new Date(2025, 6, 15), time: '08:00', client: 'Pedro L.', pet: 'Rocky', service: 'Cuidado', type: 'care', price: 35, status: 'confirmed' },
-]
+const SERVICE_LABELS: Record<string, string> = {
+  walk: 'Paseo',
+  visit: 'Visita',
+  care: 'Cuidado',
+  training: 'Educación',
+}
+
+// Parse "YYYY-MM-DD" to local Date (avoids UTC offset shifting the day)
+const parseDate = (dateStr: string): Date => {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
 
 export default function CalendarioPage() {
+  const supabase = createClient()
   const today = new Date()
-  const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
-  const [selectedDay, setSelectedDay] = useState<Date | null>(today)
-  const [openDialog, setOpenDialog] = useState(false)
-  const [appointments, setAppointments] = useState(mockAppointments)
 
-  // Form states for new appointment
+  const [currentMonth, setCurrentMonth] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1)
+  )
+  const [selectedDay, setSelectedDay] = useState<Date | null>(today)
+  const [appointments, setAppointments] = useState<any[]>([])
+  const [clientsList, setClientsList] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // New appointment form
+  const [openDialog, setOpenDialog] = useState(false)
+  const [newClientId, setNewClientId] = useState('')
   const [newClient, setNewClient] = useState('')
   const [newPet, setNewPet] = useState('')
   const [newService, setNewService] = useState('walk')
   const [newDate, setNewDate] = useState('')
   const [newTime, setNewTime] = useState('')
-  const [newDuration, setNewDuration] = useState('30')
   const [newPrice, setNewPrice] = useState('10')
-  const [newNotes, setNewNotes] = useState('')
+  const [newStatus, setNewStatus] = useState('confirmed')
+  const [saving, setSaving] = useState(false)
 
-  // Form states for editing appointment
+  // Edit appointment
   const [editingApt, setEditingApt] = useState<any>(null)
   const [openEditDialog, setOpenEditDialog] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
 
+  // ─── Fetch ───────────────────────────────────────────────────────────────────
+  const fetchAppointments = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('appointments')
+      .select('*')
+      .order('date', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching appointments:', error)
+    } else {
+      setAppointments(
+        (data || []).map((a) => ({ ...a, date: parseDate(a.date) }))
+      )
+    }
+    setLoading(false)
+  }
+
+  const fetchClients = async () => {
+    const { data } = await supabase
+      .from('clients')
+      .select('id, name, pets(id, name)')
+      .order('name')
+    setClientsList(data || [])
+  }
+
+  useEffect(() => {
+    fetchAppointments()
+    fetchClients()
+  }, [])
+
+  // ─── Calendar helpers ────────────────────────────────────────────────────────
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
@@ -89,84 +131,172 @@ export default function CalendarioPage() {
   const getAppointmentsForDay = (day: Date) =>
     appointments.filter((a) => isSameDay(a.date, day))
 
-  const selectedDayAppointments = selectedDay ? getAppointmentsForDay(selectedDay) : []
-  const monthAppointments = appointments.filter((a) => isSameMonth(a.date, currentMonth))
-  const confirmedAppointments = monthAppointments.filter((a) => a.status === 'confirmed').length
+  const selectedDayAppointments = selectedDay
+    ? getAppointmentsForDay(selectedDay)
+    : []
+  const monthAppointments = appointments.filter((a) =>
+    isSameMonth(a.date, currentMonth)
+  )
+  const confirmedCount = monthAppointments.filter(
+    (a) => a.status === 'confirmed'
+  ).length
 
-  const handleCreateAppointment = () => {
-    if (!newClient || !newPet || !newDate || !newTime) {
-      alert('Por favor complete todos los campos obligatorios.')
-      return
-    }
+  const selectedClient = clientsList.find((c) => c.id === newClientId)
+  const selectedClientPets: any[] = selectedClient?.pets || []
 
-    const [year, month, day] = newDate.split('-').map(Number)
-    const serviceLabelMap: Record<string, string> = {
-      walk: 'Paseo',
-      visit: 'Visita',
-      care: 'Cuidado',
-      training: 'Educación',
-    }
-
-    const newApt = {
-      id: String(Date.now()),
-      date: new Date(year, month - 1, day),
-      time: newTime,
-      client: newClient,
-      pet: newPet,
-      service: serviceLabelMap[newService] || 'Paseo',
-      type: newService,
-      price: Number(newPrice) || 10,
-      status: 'confirmed',
-    }
-
-    setAppointments((prev) => [...prev, newApt])
-    setOpenDialog(false)
-
-    // Reset fields
+  // ─── Reset form ──────────────────────────────────────────────────────────────
+  const resetForm = () => {
+    setNewClientId('')
     setNewClient('')
     setNewPet('')
     setNewService('walk')
     setNewDate('')
     setNewTime('')
-    setNewDuration('30')
     setNewPrice('10')
-    setNewNotes('')
+    setNewStatus('confirmed')
   }
 
-  const handleOpenEdit = (apt: any) => {
-    setEditingApt({ ...apt })
-    setOpenEditDialog(true)
-  }
-
-  const handleUpdateAppointment = () => {
-    if (!editingApt.client || !editingApt.pet || !editingApt.time) {
-      alert('Por favor complete todos los campos obligatorios.')
+  // ─── Create ──────────────────────────────────────────────────────────────────
+  const handleCreateAppointment = async () => {
+    if (!newClient || !newPet || !newDate || !newTime) {
+      alert('Por favor completa todos los campos obligatorios.')
       return
     }
 
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === editingApt.id ? editingApt : a))
-    )
-    setOpenEditDialog(false)
-    setEditingApt(null)
-  }
+    setSaving(true)
+    try {
+      const payload: any = {
+        date: newDate,
+        time: newTime,
+        client: newClient,
+        pet_name: newPet,
+        service: SERVICE_LABELS[newService] || 'Paseo',
+        type: newService,
+        price: Number(newPrice) || 10,
+        status: newStatus,
+      }
+      if (newClientId) payload.client_id = newClientId
 
-  const handleDeleteAppointment = (id: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar esta cita?')) {
-      setAppointments((prev) => prev.filter((a) => a.id !== id))
+      const { data, error } = await supabase
+        .from('appointments')
+        .insert([payload])
+        .select()
+
+      if (error) throw error
+
+      if (data && data[0]) {
+        setAppointments((prev) => [
+          ...prev,
+          { ...data[0], date: parseDate(data[0].date) },
+        ])
+      }
+
+      setOpenDialog(false)
+      resetForm()
+    } catch (err) {
+      console.error('Error creating appointment:', err)
+      alert('Error al crear la cita.')
+    } finally {
+      setSaving(false)
     }
   }
 
+  // ─── Edit ────────────────────────────────────────────────────────────────────
+  const handleOpenEdit = (apt: any) => {
+    setEditingApt({
+      ...apt,
+      dateStr: format(apt.date, 'yyyy-MM-dd'),
+      // Normalise pet field name
+      pet_name: apt.pet_name || apt.pet || '',
+    })
+    setOpenEditDialog(true)
+  }
+
+  const handleUpdateAppointment = async () => {
+    if (!editingApt.client || !editingApt.pet_name || !editingApt.time) {
+      alert('Por favor completa todos los campos obligatorios.')
+      return
+    }
+
+    setEditSaving(true)
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .update({
+          date: editingApt.dateStr,
+          time: editingApt.time,
+          client: editingApt.client,
+          pet_name: editingApt.pet_name,
+          service: editingApt.service,
+          type: editingApt.type,
+          price: Number(editingApt.price) || 10,
+          status: editingApt.status,
+        })
+        .eq('id', editingApt.id)
+        .select()
+
+      if (error) throw error
+
+      if (data && data[0]) {
+        setAppointments((prev) =>
+          prev.map((a) =>
+            a.id === editingApt.id
+              ? { ...data[0], date: parseDate(data[0].date) }
+              : a
+          )
+        )
+      }
+
+      setOpenEditDialog(false)
+      setEditingApt(null)
+    } catch (err) {
+      console.error('Error updating appointment:', err)
+      alert('Error al actualizar la cita.')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  // ─── Delete ──────────────────────────────────────────────────────────────────
+  const handleDeleteAppointment = async (id: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta cita?')) return
+
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      setAppointments((prev) => prev.filter((a) => a.id !== id))
+    } catch (err) {
+      console.error('Error deleting appointment:', err)
+      alert('Error al eliminar la cita.')
+    }
+  }
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight">Calendario</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">
+            Calendario
+          </h1>
           <p className="text-muted-foreground text-sm">
             {format(currentMonth, 'MMMM yyyy', { locale: es })}
           </p>
         </div>
-        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+
+        {/* New appointment dialog */}
+        <Dialog
+          open={openDialog}
+          onOpenChange={(o) => {
+            setOpenDialog(o)
+            if (!o) resetForm()
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -178,73 +308,139 @@ export default function CalendarioPage() {
               <DialogTitle>Nueva cita</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Cliente *</Label>
-                  <Select value={newClient} onValueChange={(val) => setNewClient(val || '')}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Xavier M.">Xavier M.</SelectItem>
-                      <SelectItem value="Laura G.">Laura G.</SelectItem>
-                      <SelectItem value="Marc T.">Marc T.</SelectItem>
-                      <SelectItem value="Ana R.">Ana R.</SelectItem>
-                      <SelectItem value="Pedro L.">Pedro L.</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Mascota *</Label>
-                  <Select value={newPet} onValueChange={(val) => setNewPet(val || '')}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Koto">Koto</SelectItem>
-                      <SelectItem value="Max">Max</SelectItem>
-                      <SelectItem value="Luna">Luna</SelectItem>
-                      <SelectItem value="Mochi">Mochi</SelectItem>
-                      <SelectItem value="Rocky">Rocky</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Client */}
+              <div className="space-y-1.5">
+                <Label>Cliente *</Label>
+                <Select
+                  value={newClientId}
+                  onValueChange={(val) => {
+                    setNewClientId(val)
+                    const c = clientsList.find((c) => c.id === val)
+                    if (c) setNewClient(c.name)
+                    setNewPet('')
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientsList.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Pet */}
+              <div className="space-y-1.5">
+                <Label>Mascota *</Label>
+                {selectedClientPets.length > 0 ? (
+                  <Select
+                    value={newPet}
+                    onValueChange={(val) => setNewPet(val || '')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar mascota" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {selectedClientPets.map((p: any) => (
+                        <SelectItem key={p.id} value={p.name}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    placeholder="Nombre de la mascota"
+                    value={newPet}
+                    onChange={(e) => setNewPet(e.target.value)}
+                  />
+                )}
+              </div>
+
+              {/* Service */}
               <div className="space-y-1.5">
                 <Label>Servicio *</Label>
-                <Select value={newService} onValueChange={(val) => setNewService(val || 'walk')}>
-                  <SelectTrigger><SelectValue placeholder="Tipo de servicio" /></SelectTrigger>
+                <Select
+                  value={newService}
+                  onValueChange={(val) => setNewService(val || 'walk')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="walk">Paseo de perros (10€)</SelectItem>
+                    <SelectItem value="walk">Paseo (10€)</SelectItem>
                     <SelectItem value="visit">Visita a domicilio (10€)</SelectItem>
                     <SelectItem value="care">Cuidado a domicilio (35€)</SelectItem>
                     <SelectItem value="training">Educación canina</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Date & Time */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Fecha *</Label>
-                  <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+                  <Input
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Hora *</Label>
-                  <Input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)} />
+                  <Input
+                    type="time"
+                    value={newTime}
+                    onChange={(e) => setNewTime(e.target.value)}
+                  />
                 </div>
               </div>
+
+              {/* Price & Status */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Duración (min)</Label>
-                  <Input type="number" placeholder="30" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} />
+                  <Label>Precio (€)</Label>
+                  <Input
+                    type="number"
+                    value={newPrice}
+                    onChange={(e) => setNewPrice(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Precio (€)</Label>
-                  <Input type="number" placeholder="10" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} />
+                  <Label>Estado</Label>
+                  <Select
+                    value={newStatus}
+                    onValueChange={(val) => setNewStatus(val || 'confirmed')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="confirmed">Confirmada</SelectItem>
+                      <SelectItem value="pending">Pendiente</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Notas</Label>
-                <Textarea placeholder="Notas sobre la cita..." rows={2} value={newNotes} onChange={(e) => setNewNotes(e.target.value)} />
-              </div>
+
               <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button>
-                <Button onClick={handleCreateAppointment}>Crear cita</Button>
+                <Button variant="outline" onClick={() => setOpenDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateAppointment} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Crear cita'
+                  )}
+                </Button>
               </div>
             </div>
           </DialogContent>
@@ -253,33 +449,55 @@ export default function CalendarioPage() {
 
       {/* Legend */}
       <div className="flex gap-3 flex-wrap text-xs">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-green-200" />Paseo</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-200" />Visita</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-orange-200" />Cuidado</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-purple-200" />Educación</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-green-200" />Paseo
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-blue-200" />Visita
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-orange-200" />Cuidado
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-purple-200" />Educación
+        </span>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-primary/15 bg-primary/[0.04] shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Citas este mes</p>
-            <p className="mt-2 text-3xl font-bold">{monthAppointments.length}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Citas este mes
+            </p>
+            <p className="mt-2 text-3xl font-bold">
+              {loading ? '—' : monthAppointments.length}
+            </p>
           </CardContent>
         </Card>
         <Card className="border-emerald-200 bg-emerald-50 shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Confirmadas</p>
-            <p className="mt-2 text-3xl font-bold text-emerald-900">{confirmedAppointments}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
+              Confirmadas
+            </p>
+            <p className="mt-2 text-3xl font-bold text-emerald-900">
+              {loading ? '—' : confirmedCount}
+            </p>
           </CardContent>
         </Card>
         <Card className="border-amber-200 bg-amber-50 shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Día seleccionado</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-amber-700">
+              Día seleccionado
+            </p>
             <p className="mt-2 text-3xl font-bold">
-              {selectedDay ? format(selectedDay, "d MMM", { locale: es }) : 'Sin selección'}
+              {selectedDay
+                ? format(selectedDay, 'd MMM', { locale: es })
+                : 'Sin selección'}
             </p>
             <p className="text-sm text-muted-foreground">
-              {selectedDayAppointments.length} cita{selectedDayAppointments.length === 1 ? '' : 's'}
+              {selectedDayAppointments.length} cita
+              {selectedDayAppointments.length === 1 ? '' : 's'}
             </p>
           </CardContent>
         </Card>
@@ -307,7 +525,9 @@ export default function CalendarioPage() {
                   className="hidden sm:inline-flex"
                   onClick={() => {
                     const now = new Date()
-                    setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1))
+                    setCurrentMonth(
+                      new Date(now.getFullYear(), now.getMonth(), 1)
+                    )
                     setSelectedDay(now)
                   }}
                 >
@@ -325,73 +545,96 @@ export default function CalendarioPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Day headers */}
-            <div className="grid grid-cols-7 gap-2 mb-3">
-              {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((d) => (
-                <div
-                  key={d}
-                  className="rounded-md bg-muted/50 py-2 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  {d}
+            {loading ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary opacity-60" />
+              </div>
+            ) : (
+              <>
+                {/* Day headers */}
+                <div className="grid grid-cols-7 gap-2 mb-3">
+                  {['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((d) => (
+                    <div
+                      key={d}
+                      className="rounded-md bg-muted/50 py-2 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      {d}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            {/* Day cells */}
-            <div className="grid grid-cols-7 gap-2">
-              {[...Array(startDow)].map((_, i) => (
-                <div key={`empty-${i}`} className="min-h-[108px] rounded-xl bg-muted/20" />
-              ))}
-              {days.map((day) => {
-                const dayApts = getAppointmentsForDay(day)
-                const isSelected = selectedDay && isSameDay(day, selectedDay)
-                const isToday = isSameDay(day, new Date())
 
-                return (
-                  <button
-                    key={day.toISOString()}
-                    onClick={() => setSelectedDay(day)}
-                    className={`relative min-h-[108px] rounded-xl border p-2.5 text-left transition-all hover:border-border hover:bg-secondary/40 ${
-                      isSelected ? 'border-primary bg-primary/[0.08] ring-2 ring-primary/15 shadow-sm' : 'border-border/60 bg-background'
-                    } ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}`}
-                  >
-                    <div className="mb-2 flex items-start justify-between gap-2">
-                      <span
-                        className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
-                          isToday ? 'bg-primary text-primary-foreground' : 'text-foreground'
-                        }`}
+                {/* Day cells */}
+                <div className="grid grid-cols-7 gap-2">
+                  {[...Array(startDow)].map((_, i) => (
+                    <div
+                      key={`empty-${i}`}
+                      className="min-h-[108px] rounded-xl bg-muted/20"
+                    />
+                  ))}
+                  {days.map((day) => {
+                    const dayApts = getAppointmentsForDay(day)
+                    const isSelected =
+                      selectedDay && isSameDay(day, selectedDay)
+                    const isToday = isSameDay(day, new Date())
+
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        onClick={() => setSelectedDay(day)}
+                        className={`relative min-h-[108px] rounded-xl border p-2.5 text-left transition-all hover:border-border hover:bg-secondary/40 ${
+                          isSelected
+                            ? 'border-primary bg-primary/[0.08] ring-2 ring-primary/15 shadow-sm'
+                            : 'border-border/60 bg-background'
+                        } ${!isSameMonth(day, currentMonth) ? 'opacity-30' : ''}`}
                       >
-                        {format(day, 'd')}
-                      </span>
-                      {dayApts.length > 0 && (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                          {dayApts.length}
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-1.5">
-                      {dayApts.slice(0, 3).map((apt) => (
-                        <div
-                          key={apt.id}
-                          className={`rounded-md px-2 py-1 text-[11px] leading-tight ${SERVICE_COLORS[apt.type]}`}
-                        >
-                          <span className="block font-semibold">{apt.time}</span>
-                          <span className="block truncate">{apt.pet}</span>
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <span
+                            className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                              isToday
+                                ? 'bg-primary text-primary-foreground'
+                                : 'text-foreground'
+                            }`}
+                          >
+                            {format(day, 'd')}
+                          </span>
+                          {dayApts.length > 0 && (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                              {dayApts.length}
+                            </span>
+                          )}
                         </div>
-                      ))}
-                      {dayApts.length > 3 && (
-                        <div className="px-1 text-[11px] font-medium text-muted-foreground">
-                          +{dayApts.length - 3} más
+                        <div className="space-y-1.5">
+                          {dayApts.slice(0, 3).map((apt) => (
+                            <div
+                              key={apt.id}
+                              className={`rounded-md px-2 py-1 text-[11px] leading-tight ${
+                                SERVICE_COLORS[apt.type] || SERVICE_COLORS.walk
+                              }`}
+                            >
+                              <span className="block font-semibold">
+                                {apt.time}
+                              </span>
+                              <span className="block truncate">
+                                {apt.pet_name || apt.pet}
+                              </span>
+                            </div>
+                          ))}
+                          {dayApts.length > 3 && (
+                            <div className="px-1 text-[11px] font-medium text-muted-foreground">
+                              +{dayApts.length - 3} más
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
-        {/* Day detail */}
+        {/* Day detail panel */}
         <Card className="shadow-sm lg:sticky lg:top-24 h-fit">
           <CardHeader className="pb-3">
             <CardTitle className="font-display text-xl capitalize">
@@ -416,29 +659,53 @@ export default function CalendarioPage() {
                     <div key={apt.id} className="rounded-xl border p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="font-semibold text-sm">{apt.time}</span>
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${SERVICE_COLORS[apt.type]}`}>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                            SERVICE_COLORS[apt.type] || SERVICE_COLORS.walk
+                          }`}
+                        >
                           {apt.service}
                         </span>
                       </div>
-                      <p className="text-base font-semibold">{apt.pet}</p>
-                      <p className="text-sm text-muted-foreground">{apt.client}</p>
+                      <p className="text-base font-semibold">
+                        {apt.pet_name || apt.pet}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {apt.client}
+                      </p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-base font-semibold">{apt.price}€</span>
+                        <span className="text-base font-semibold">
+                          {apt.price}€
+                        </span>
                         <Badge
                           variant="outline"
-                          className={`text-xs ${apt.status === 'confirmed' ? 'border-green-300 text-green-700' : 'border-yellow-300 text-yellow-700'}`}
+                          className={`text-xs ${
+                            apt.status === 'confirmed'
+                              ? 'border-green-300 text-green-700'
+                              : 'border-yellow-300 text-yellow-700'
+                          }`}
                         >
-                          {apt.status === 'confirmed' ? 'Confirmada' : 'Pendiente'}
+                          {apt.status === 'confirmed'
+                            ? 'Confirmada'
+                            : 'Pendiente'}
                         </Badge>
                       </div>
-
-                      {/* Edit and delete buttons */}
                       <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-border/40">
-                        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => handleOpenEdit(apt)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => handleOpenEdit(apt)}
+                        >
                           <Edit className="h-3 w-3 mr-1" />
                           Editar
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteAppointment(apt.id)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteAppointment(apt.id)}
+                        >
                           <Trash2 className="h-3 w-3 mr-1" />
                           Eliminar
                         </Button>
@@ -462,30 +729,46 @@ export default function CalendarioPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Cliente *</Label>
-                  <Input value={editingApt.client} onChange={(e) => setEditingApt({ ...editingApt, client: e.target.value })} />
+                  <Input
+                    value={editingApt.client}
+                    onChange={(e) =>
+                      setEditingApt({ ...editingApt, client: e.target.value })
+                    }
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Mascota *</Label>
-                  <Input value={editingApt.pet} onChange={(e) => setEditingApt({ ...editingApt, pet: e.target.value })} />
+                  <Input
+                    value={editingApt.pet_name}
+                    onChange={(e) =>
+                      setEditingApt({
+                        ...editingApt,
+                        pet_name: e.target.value,
+                      })
+                    }
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Servicio *</Label>
-                <Select value={editingApt.type} onValueChange={(val) => {
-                  if (!val) return
-                  const serviceLabelMap: Record<string, string> = {
-                    walk: 'Paseo',
-                    visit: 'Visita',
-                    care: 'Cuidado',
-                    training: 'Educación',
-                  }
-                  setEditingApt({ ...editingApt, type: val, service: serviceLabelMap[val] || 'Paseo' })
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Tipo de servicio" /></SelectTrigger>
+                <Select
+                  value={editingApt.type}
+                  onValueChange={(val) => {
+                    if (!val) return
+                    setEditingApt({
+                      ...editingApt,
+                      type: val,
+                      service: SERVICE_LABELS[val] || 'Paseo',
+                    })
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="walk">Paseo de perros (10€)</SelectItem>
-                    <SelectItem value="visit">Visita a domicilio (10€)</SelectItem>
-                    <SelectItem value="care">Cuidado a domicilio (35€)</SelectItem>
+                    <SelectItem value="walk">Paseo</SelectItem>
+                    <SelectItem value="visit">Visita a domicilio</SelectItem>
+                    <SelectItem value="care">Cuidado a domicilio</SelectItem>
                     <SelectItem value="training">Educación canina</SelectItem>
                   </SelectContent>
                 </Select>
@@ -493,25 +776,56 @@ export default function CalendarioPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Fecha *</Label>
-                  <Input type="date" value={editingApt.date ? format(new Date(editingApt.date), 'yyyy-MM-dd') : ''} onChange={(e) => {
-                    const [year, month, day] = e.target.value.split('-').map(Number)
-                    setEditingApt({ ...editingApt, date: new Date(year, month - 1, day) })
-                  }} />
+                  <Input
+                    type="date"
+                    value={editingApt.dateStr}
+                    onChange={(e) =>
+                      setEditingApt({
+                        ...editingApt,
+                        dateStr: e.target.value,
+                      })
+                    }
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Hora *</Label>
-                  <Input type="time" value={editingApt.time} onChange={(e) => setEditingApt({ ...editingApt, time: e.target.value })} />
+                  <Input
+                    type="time"
+                    value={editingApt.time}
+                    onChange={(e) =>
+                      setEditingApt({ ...editingApt, time: e.target.value })
+                    }
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Precio (€)</Label>
-                  <Input type="number" value={editingApt.price} onChange={(e) => setEditingApt({ ...editingApt, price: Number(e.target.value) })} />
+                  <Input
+                    type="number"
+                    value={editingApt.price}
+                    onChange={(e) =>
+                      setEditingApt({
+                        ...editingApt,
+                        price: Number(e.target.value),
+                      })
+                    }
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Estado</Label>
-                  <Select value={editingApt.status} onValueChange={(val) => setEditingApt({ ...editingApt, status: val || 'confirmed' })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select
+                    value={editingApt.status}
+                    onValueChange={(val) =>
+                      setEditingApt({
+                        ...editingApt,
+                        status: val || 'confirmed',
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="confirmed">Confirmada</SelectItem>
                       <SelectItem value="pending">Pendiente</SelectItem>
@@ -520,8 +834,25 @@ export default function CalendarioPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setOpenEditDialog(false)}>Cancelar</Button>
-                <Button onClick={handleUpdateAppointment}>Guardar cambios</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setOpenEditDialog(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleUpdateAppointment}
+                  disabled={editSaving}
+                >
+                  {editSaving ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Guardar cambios'
+                  )}
+                </Button>
               </div>
             </div>
           )}
