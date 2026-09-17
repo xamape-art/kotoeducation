@@ -16,6 +16,15 @@ import {
   Phone,
 } from 'lucide-react'
 import { WHATSAPP_HREF, PHONE_HREF, PHONE_DISPLAY } from '@/lib/contact'
+import {
+  reviews,
+  REVIEWS_RATING,
+  ROVER_PROFILE_HREF,
+  ROVER_REVIEWS_COUNT,
+  type Review,
+} from '@/lib/reviews'
+
+const FEATURED_REVIEWS = 6
 
 const services = [
   {
@@ -47,29 +56,8 @@ const services = [
 const stats = [
   { value: '3+', label: 'Años de experiencia' },
   { value: '100%', label: 'Tasa de respuesta' },
-  { value: '5.0', label: 'Valoración media' },
+  { value: REVIEWS_RATING, label: 'Valoración media' },
   { value: '7/7', label: 'Días disponible' },
-]
-
-const reviews = [
-  {
-    name: 'Laura G.',
-    pet: 'Max (Golden Retriever)',
-    text: 'Carla es increíble con Max. Siempre puntual, cariñosa y nos manda fotos durante el paseo. ¡Totalmente recomendable!',
-    stars: 5,
-  },
-  {
-    name: 'Marc T.',
-    pet: 'Luna (Galgo)',
-    text: 'Llevamos más de un año con Carla y no cambiaríamos por nada. Conoce perfectamente las necesidades de Luna.',
-    stars: 5,
-  },
-  {
-    name: 'Ana R.',
-    pet: 'Mochi (Gato)',
-    text: 'Se ocupó de Mochi durante nuestras vacaciones. Casa perfecta y gato feliz. ¡La más confiable!',
-    stars: 5,
-  },
 ]
 
 export default function HomePage() {
@@ -248,8 +236,8 @@ export default function HomePage() {
               >
                 <div className="flex items-center gap-2">
                   <Star className="h-5 w-5 fill-white text-white" />
-                  <span className="font-bold text-white text-lg">5.0</span>
-                  <span className="text-sm text-white/80">· 14+ reseñas</span>
+                  <span className="font-bold text-white text-lg">{REVIEWS_RATING}</span>
+                  <span className="text-sm text-white/80">· {ROVER_REVIEWS_COUNT} reseñas</span>
                 </div>
               </div>
             </div>
@@ -309,26 +297,32 @@ export default function HomePage() {
               Opiniones reales de propietarios de mascotas en Terrassa
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {reviews.map((r) => (
-              <Card key={r.name} className="border border-border shadow-sm">
-                <CardContent className="p-8">
-                  <div className="flex mb-4">
-                    {[...Array(r.stars)].map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-accent text-accent" />
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground text-sm mb-6 leading-relaxed italic">
-                    &ldquo;{r.text}&rdquo;
-                  </p>
-                  <div className="border-t border-border/50 pt-4">
-                    <p className="font-semibold text-sm text-foreground">{r.name}</p>
-                    <p className="text-muted-foreground text-xs">{r.pet}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
+            {reviews.slice(0, FEATURED_REVIEWS).map(renderReview)}
           </div>
+          {reviews.length > FEATURED_REVIEWS && (
+            <details className="group">
+              <summary className="list-none [&::-webkit-details-marker]:hidden flex justify-center mb-8 group-open:hidden">
+                <span className="cursor-pointer rounded-full border border-primary text-primary px-6 py-2 text-sm font-medium hover:bg-secondary transition-colors">
+                  Ver más reseñas
+                </span>
+              </summary>
+              <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
+                {reviews.slice(FEATURED_REVIEWS).map((r, i) => renderReview(r, i + FEATURED_REVIEWS))}
+              </div>
+            </details>
+          )}
+          <p className="text-center text-sm text-muted-foreground mt-4">
+            {REVIEWS_RATING} ★ en Rover ·{' '}
+            <a
+              href={ROVER_PROFILE_HREF}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary font-medium hover:underline"
+            >
+              Ver perfil en Rover →
+            </a>
+          </p>
         </div>
       </section>
 
@@ -382,5 +376,34 @@ export default function HomePage() {
         </div>
       </section>
     </>
+  )
+}
+
+function renderReview(r: Review, i: number) {
+  return (
+    <Card key={`${r.name}-${r.date ?? i}`} className="border border-border shadow-sm break-inside-avoid mb-6">
+      <CardContent className="p-8">
+        <div className="flex mb-4" aria-label="5 de 5 estrellas">
+          {[...Array(5)].map((_, j) => (
+            <Star key={j} className="h-4 w-4 fill-accent text-accent" />
+          ))}
+        </div>
+        <p className="text-muted-foreground text-sm mb-6 leading-relaxed italic">
+          &ldquo;{r.text}&rdquo;
+        </p>
+        {r.reply && (
+          <div className="border-l-2 border-accent/40 pl-3 mb-6">
+            <p className="text-xs font-semibold text-foreground mb-1">Respuesta de Carla</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{r.reply}</p>
+          </div>
+        )}
+        <div className="border-t border-border/50 pt-4">
+          <p className="font-semibold text-sm text-foreground">{r.name}</p>
+          <p className="text-muted-foreground text-xs">
+            {[r.service, r.date].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
