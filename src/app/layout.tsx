@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { SITE_URL } from "@/lib/contact";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,6 +20,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Koto Education 🐾 | Paseadora y Cuidadora de Mascotas en Terrassa",
   description:
     "Paseos, visitas a domicilio y cuidado de mascotas en Terrassa. Carla M., paseadora profesional con 3 años de experiencia.",

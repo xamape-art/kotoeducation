@@ -4,3 +4,4 @@ export const PHONE_HREF = `tel:${PHONE_NUMBER}`
 export const WHATSAPP_HREF = 'https://wa.me/34638237198'
 export const EMAIL = 'kotoeducation@gmail.com'
 export const INSTAGRAM_HREF = 'https://instagram.com/kotoeducation'
+export const SITE_URL = 'https://kotoeducation.vercel.app'
