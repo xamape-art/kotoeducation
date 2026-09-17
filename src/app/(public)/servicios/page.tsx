@@ -1,14 +1,14 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Dog, Home, Heart, GraduationCap, Clock, HelpCircle } from 'lucide-react'
-import Link from 'next/link'
+import { CheckCircle2, Dog, Home, Heart, GraduationCap, Clock, HelpCircle, MessageCircle } from 'lucide-react'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
+import { WHATSAPP_HREF } from '@/lib/contact'
 
 export const metadata = {
   title: 'Servicios y Tarifas | Koto Education',
@@ -192,7 +192,10 @@ export default function ServiciosPage() {
           </p>
         </div>
         <Button asChild className="shrink-0">
-          <Link href="/contacto">Comprobar disponibilidad</Link>
+          <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Consultar por WhatsApp
+          </a>
         </Button>
       </div>
 

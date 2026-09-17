@@ -1,8 +1,9 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { Camera } from 'lucide-react'
+import { Camera, MessageCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { WHATSAPP_HREF } from '@/lib/contact'
 
 export const metadata = {
   title: 'Galería | Koto Education',
@@ -142,7 +143,10 @@ export default async function GaleriaPage({
           ¿Te gustaría que cuidara a tu mascota?
         </h2>
         <Button asChild size="lg">
-          <Link href="/contacto">Solicitar cita</Link>
+          <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Escríbeme por WhatsApp
+          </a>
         </Button>
       </div>
     </div>

@@ -1,11 +1,18 @@
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import ContactForm from '@/components/public/ContactForm'
 import { MapPin, Phone, Mail, ExternalLink, Clock, MessageCircle } from 'lucide-react'
+import {
+  PHONE_DISPLAY,
+  PHONE_HREF,
+  WHATSAPP_HREF,
+  EMAIL,
+  INSTAGRAM_HREF,
+} from '@/lib/contact'
 
 export const metadata = {
   title: 'Contacto | Koto Education',
-  description: 'Solicita cita o información sobre los servicios de paseo y cuidado de mascotas en Terrassa.',
+  description: 'Contacta por teléfono o WhatsApp para informarte sobre los servicios de paseo y cuidado de mascotas en Terrassa.',
 }
 
 export default function ContactoPage() {
@@ -15,8 +22,8 @@ export default function ContactoPage() {
         <Badge className="mb-4">Contacto</Badge>
         <h1 className="text-4xl font-display font-bold mb-4">¿Hablamos? 🐾</h1>
         <p className="text-muted-foreground max-w-xl mx-auto">
-          Rellena el formulario y te responderé lo antes posible, normalmente en minutos.
-          También puedes escribirme directamente por WhatsApp.
+          Escríbeme por WhatsApp o llámame directamente y te responderé lo antes posible,
+          normalmente en minutos.
         </p>
       </div>
 
@@ -39,8 +46,8 @@ export default function ContactoPage() {
                 <Phone className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Teléfono / WhatsApp</p>
-                  <a href="tel:+34638237198" className="text-muted-foreground hover:text-foreground">
-                    +34 638 237 198
+                  <a href={PHONE_HREF} className="text-muted-foreground hover:text-foreground">
+                    {PHONE_DISPLAY}
                   </a>
                 </div>
               </div>
@@ -49,8 +56,8 @@ export default function ContactoPage() {
                 <Mail className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <div>
                   <p className="font-medium">Email</p>
-                  <a href="mailto:kotoeducation@gmail.com" className="text-muted-foreground hover:text-foreground">
-                    kotoeducation@gmail.com
+                  <a href={`mailto:${EMAIL}`} className="text-muted-foreground hover:text-foreground">
+                    {EMAIL}
                   </a>
                 </div>
               </div>
@@ -60,7 +67,7 @@ export default function ContactoPage() {
                 <div>
                   <p className="font-medium">Instagram</p>
                   <a
-                    href="https://instagram.com/kotoeducation"
+                    href={INSTAGRAM_HREF}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-muted-foreground hover:text-foreground"
@@ -88,35 +95,44 @@ export default function ContactoPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-accent/10 border-accent/30">
-            <CardContent className="p-5">
-              <div className="flex items-start gap-3 text-sm">
-                <MessageCircle className="h-4 w-4 text-accent mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-semibold mb-1">¿Prefieres WhatsApp?</p>
-                  <p className="text-muted-foreground">
-                    ¡También puedes escribirme directamente!
-                  </p>
-                  <a
-                    href="https://wa.me/34638237198"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block mt-2 text-primary font-medium hover:underline"
-                  >
-                    Abrir WhatsApp →
-                  </a>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Form */}
+        {/* Direct contact */}
         <div className="lg:col-span-2">
           <Card>
-            <CardContent className="p-6 md:p-8">
-              <ContactForm />
+            <CardContent className="p-6 md:p-10 text-center">
+              <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-secondary mb-5">
+                <MessageCircle className="h-7 w-7 text-primary" />
+              </div>
+              <h2 className="text-2xl font-display font-bold mb-3">
+                Contáctame directamente
+              </h2>
+              <p className="text-muted-foreground max-w-md mx-auto mb-8">
+                Cuéntame qué necesitas para tu mascota (servicio, fechas, raza y edad) y
+                te confirmo disponibilidad sin compromiso.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button asChild size="lg" className="rounded-full px-8">
+                  <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer">
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Escríbeme por WhatsApp
+                  </a>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="rounded-full px-8">
+                  <a href={PHONE_HREF}>
+                    <Phone className="mr-2 h-4 w-4" />
+                    Llamar {PHONE_DISPLAY}
+                  </a>
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-8">
+                También puedes escribirme a{' '}
+                <a href={`mailto:${EMAIL}`} className="text-primary hover:underline">
+                  {EMAIL}
+                </a>
+              </p>
             </CardContent>
           </Card>
         </div>

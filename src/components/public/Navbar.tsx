@@ -4,10 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Menu } from 'lucide-react'
+import { Menu, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { WHATSAPP_HREF } from '@/lib/contact'
 
 const navLinks = [
   { href: '/', label: 'Inicio' },
@@ -67,7 +68,10 @@ export default function Navbar() {
         {/* CTA button */}
         <div className="hidden md:block">
           <Button asChild size="sm" className="rounded-full px-5">
-            <Link href="/contacto">Solicitar cita</Link>
+            <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer">
+              <MessageCircle className="mr-2 h-4 w-4" />
+              WhatsApp
+            </a>
           </Button>
         </div>
 
@@ -106,9 +110,15 @@ export default function Navbar() {
                 </Link>
               ))}
               <Button asChild className="mt-4 rounded-full">
-                <Link href="/contacto" onClick={() => setOpen(false)}>
-                  Solicitar cita
-                </Link>
+                <a
+                  href={WHATSAPP_HREF}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
+                >
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  WhatsApp
+                </a>
               </Button>
             </nav>
           </SheetContent>

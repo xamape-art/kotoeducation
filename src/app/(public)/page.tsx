@@ -12,7 +12,10 @@ import {
   Clock,
   MapPin,
   ArrowRight,
+  MessageCircle,
+  Phone,
 } from 'lucide-react'
+import { WHATSAPP_HREF, PHONE_HREF, PHONE_DISPLAY } from '@/lib/contact'
 
 const services = [
   {
@@ -105,10 +108,10 @@ export default function HomePage() {
                   className="rounded-full px-8 text-base shadow-lg"
                   style={{ backgroundColor: '#8B3A1E', color: '#F5EDE3' }}
                 >
-                  <Link href="/contacto">
-                    Solicitar cita
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
+                  <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer">
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Escríbeme por WhatsApp
+                  </a>
                 </Button>
                 <Button
                   asChild
@@ -351,17 +354,31 @@ export default function HomePage() {
               <span className="text-sm">Todos los días de la semana</span>
             </div>
           </div>
-          <Button
-            asChild
-            size="lg"
-            className="rounded-full px-10 text-base shadow-xl"
-            style={{ backgroundColor: '#C47A35', color: '#fff' }}
-          >
-            <Link href="/contacto">
-              Solicitar cita ahora
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <Button
+              asChild
+              size="lg"
+              className="rounded-full px-10 text-base shadow-xl"
+              style={{ backgroundColor: '#C47A35', color: '#fff' }}
+            >
+              <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Escríbeme por WhatsApp
+              </a>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="rounded-full px-10 text-base"
+              style={{ borderColor: '#C47A35', color: '#F5EDE3', backgroundColor: 'transparent' }}
+            >
+              <a href={PHONE_HREF}>
+                <Phone className="mr-2 h-4 w-4" />
+                {PHONE_DISPLAY}
+              </a>
+            </Button>
+          </div>
         </div>
       </section>
     </>

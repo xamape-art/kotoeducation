@@ -1,9 +1,9 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle2, MapPin, Clock, Star, Dog, Cat } from 'lucide-react'
+import { CheckCircle2, MapPin, Clock, Star, Dog, Cat, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import Link from 'next/link'
 import Image from 'next/image'
+import { WHATSAPP_HREF } from '@/lib/contact'
 
 export const metadata = {
   title: 'Sobre mí | Koto Education',
@@ -170,7 +170,10 @@ export default function SobreMiPage() {
           Contáctame para una primera toma de contacto sin compromiso.
         </p>
         <Button asChild variant="secondary" size="lg">
-          <Link href="/contacto">Solicitar información</Link>
+          <a href={WHATSAPP_HREF} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Escríbeme por WhatsApp
+          </a>
         </Button>
       </div>
     </div>
