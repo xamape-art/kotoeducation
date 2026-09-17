@@ -16,15 +16,7 @@ import {
   Phone,
 } from 'lucide-react'
 import { WHATSAPP_HREF, PHONE_HREF, PHONE_DISPLAY } from '@/lib/contact'
-import {
-  reviews,
-  REVIEWS_RATING,
-  ROVER_PROFILE_HREF,
-  ROVER_REVIEWS_COUNT,
-  type Review,
-} from '@/lib/reviews'
-
-const FEATURED_REVIEWS = 6
+import { reviews, REVIEWS_RATING, REVIEWS_COUNT, type Review } from '@/lib/reviews'
 
 const services = [
   {
@@ -237,7 +229,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-2">
                   <Star className="h-5 w-5 fill-white text-white" />
                   <span className="font-bold text-white text-lg">{REVIEWS_RATING}</span>
-                  <span className="text-sm text-white/80">· {ROVER_REVIEWS_COUNT} reseñas</span>
+                  <span className="text-sm text-white/80">· {REVIEWS_COUNT} reseñas</span>
                 </div>
               </div>
             </div>
@@ -298,31 +290,8 @@ export default function HomePage() {
             </p>
           </div>
           <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
-            {reviews.slice(0, FEATURED_REVIEWS).map(renderReview)}
+            {reviews.map(renderReview)}
           </div>
-          {reviews.length > FEATURED_REVIEWS && (
-            <details className="group">
-              <summary className="list-none [&::-webkit-details-marker]:hidden flex justify-center mb-8 group-open:hidden">
-                <span className="cursor-pointer rounded-full border border-primary text-primary px-6 py-2 text-sm font-medium hover:bg-secondary transition-colors">
-                  Ver más reseñas
-                </span>
-              </summary>
-              <div className="columns-1 md:columns-2 lg:columns-3 gap-6">
-                {reviews.slice(FEATURED_REVIEWS).map((r, i) => renderReview(r, i + FEATURED_REVIEWS))}
-              </div>
-            </details>
-          )}
-          <p className="text-center text-sm text-muted-foreground mt-4">
-            {REVIEWS_RATING} ★ en Rover ·{' '}
-            <a
-              href={ROVER_PROFILE_HREF}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary font-medium hover:underline"
-            >
-              Ver perfil en Rover →
-            </a>
-          </p>
         </div>
       </section>
 

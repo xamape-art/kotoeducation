@@ -6,11 +6,7 @@ export type Review = {
   reply?: string
 }
 
-export const ROVER_PROFILE_HREF =
-  'https://www.rover.com/members/carla-m-koto-education-paseadora-terrassa/'
-
 export const REVIEWS_RATING = '5.0'
-export const ROVER_REVIEWS_COUNT = 22
 
 // Reseñas reales de Rover, copiadas tal cual. De más reciente a más antigua.
 const roverReviews: Review[] = [
@@ -184,3 +180,5 @@ const previousReviews: Review[] = [
 ]
 
 export const reviews: Review[] = [...roverReviews, ...previousReviews]
+
+export const REVIEWS_COUNT = roverReviews.length

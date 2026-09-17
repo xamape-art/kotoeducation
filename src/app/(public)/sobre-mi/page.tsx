@@ -4,7 +4,7 @@ import { CheckCircle2, MapPin, Clock, Star, Dog, Cat, MessageCircle } from 'luci
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import { WHATSAPP_HREF } from '@/lib/contact'
-import { REVIEWS_RATING, ROVER_PROFILE_HREF, ROVER_REVIEWS_COUNT } from '@/lib/reviews'
+import { REVIEWS_RATING, REVIEWS_COUNT } from '@/lib/reviews'
 
 export const metadata = {
   title: 'Sobre mí | Koto Education',
@@ -161,17 +161,7 @@ export default function SobreMiPage() {
           ))}
         </div>
         <p className="text-2xl font-bold mb-1">{REVIEWS_RATING} de valoración media</p>
-        <p className="text-muted-foreground">
-          {ROVER_REVIEWS_COUNT} reseñas de clientes satisfechos en{' '}
-          <a
-            href={ROVER_PROFILE_HREF}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary font-medium hover:underline"
-          >
-            Rover
-          </a>
-        </p>
+        <p className="text-muted-foreground">{REVIEWS_COUNT} reseñas de clientes satisfechos</p>
       </div>
 
       {/* CTA */}
