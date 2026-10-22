@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { calcTotals, formatEuro, formatInvoiceNumber, DEFAULT_VAT_RATE } from '@/lib/invoice'
+import { calcTotals, calcTotalsFromGross, formatEuro, formatInvoiceNumber, DEFAULT_VAT_RATE } from '@/lib/invoice'
 import type { Client, Invoice, Service } from '@/types'
 
 const nativeSelect =
@@ -22,6 +22,8 @@ type DraftLine = { description: string; quantity: string; price: string }
 const emptyLine: DraftLine = { description: '', quantity: '1', price: '' }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
+// Base prices derived from IVA-included prices keep extra decimals so totals add up
+const round6 = (n: number) => Math.round(n * 1e6) / 1e6
 
 export default function InvoiceForm({ invoice }: { invoice?: Invoice }) {
   const supabase = createClient()
@@ -37,15 +39,15 @@ export default function InvoiceForm({ invoice }: { invoice?: Invoice }) {
   const [clientAddress, setClientAddress] = useState(invoice?.client_address || '')
   const [date, setDate] = useState(invoice?.date || new Date().toISOString().split('T')[0])
   const [vatRate, setVatRate] = useState(String(invoice?.vat_rate ?? DEFAULT_VAT_RATE))
-  // Tarifas are public prices with IVA included, so by default the user types final prices
-  const [pricesIncludeVat, setPricesIncludeVat] = useState(!invoice)
+  // Tarifas are public prices with IVA included, so the user types final prices by default
+  const [pricesIncludeVat, setPricesIncludeVat] = useState(true)
   const [notes, setNotes] = useState(invoice?.notes || '')
   const [lines, setLines] = useState<DraftLine[]>(
     invoice
       ? invoice.items.map((i) => ({
           description: i.description,
           quantity: String(i.quantity),
-          price: String(i.unit_price),
+          price: String(round2(i.unit_price * (1 + Number(invoice.vat_rate) / 100))),
         }))
       : [{ ...emptyLine }]
   )
@@ -64,17 +66,21 @@ export default function InvoiceForm({ invoice }: { invoice?: Invoice }) {
 
   const vat = Number(vatRate) || 0
 
-  const items = lines
-    .filter((l) => l.description.trim())
-    .map((l) => {
-      const price = Number(l.price) || 0
-      return {
-        description: l.description.trim(),
-        quantity: Number(l.quantity) || 0,
-        unit_price: pricesIncludeVat ? round2(price / (1 + vat / 100)) : price,
-      }
-    })
-  const totals = calcTotals(items, vat)
+  const filledLines = lines.filter((l) => l.description.trim())
+  const items = filledLines.map((l) => {
+    const price = Number(l.price) || 0
+    return {
+      description: l.description.trim(),
+      quantity: Number(l.quantity) || 0,
+      unit_price: pricesIncludeVat ? round6(price / (1 + vat / 100)) : price,
+    }
+  })
+  const totals = pricesIncludeVat
+    ? calcTotalsFromGross(
+        filledLines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.price) || 0), 0),
+        vat
+      )
+    : calcTotals(items, vat)
 
   const handleSelectClient = (id: string) => {
     setClientId(id)

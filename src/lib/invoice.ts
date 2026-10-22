@@ -23,6 +23,13 @@ export function calcTotals(items: InvoiceItem[], vatRate: number) {
   return { subtotal, vatAmount, total: round2(subtotal + vatAmount) }
 }
 
+// For prices with IVA included: the total is what the client pays, so derive base and IVA from it
+export function calcTotalsFromGross(grossTotal: number, vatRate: number) {
+  const total = round2(grossTotal)
+  const subtotal = round2(total / (1 + vatRate / 100))
+  return { subtotal, vatAmount: round2(total - subtotal), total }
+}
+
 export function formatInvoiceNumber(year: number, seq: number) {
   return `${year}-${String(seq).padStart(3, '0')}`
 }
