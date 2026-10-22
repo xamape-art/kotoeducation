@@ -8,6 +8,8 @@ import {
   CalendarDays,
   Wallet,
   FileText,
+  ShoppingBag,
+  Package,
   Tag,
   Images,
   PawPrint,
@@ -24,6 +26,8 @@ const navItems = [
   { href: '/admin/calendario', icon: CalendarDays, label: 'Calendario' },
   { href: '/admin/contabilidad', icon: Wallet, label: 'Contabilidad' },
   { href: '/admin/facturas', icon: FileText, label: 'Facturas' },
+  { href: '/admin/pedidos', icon: Package, label: 'Pedidos' },
+  { href: '/admin/tienda', icon: ShoppingBag, label: 'Tienda' },
   { href: '/admin/tarifas', icon: Tag, label: 'Tarifas' },
   { href: '/admin/galeria', icon: Images, label: 'Galería' },
 ]

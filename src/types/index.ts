@@ -144,3 +144,62 @@ export interface Invoice {
   income_id: string | null
   notes: string | null
 }
+
+export interface Product {
+  id: string
+  created_at: string
+  slug: string
+  name: string
+  description: string | null
+  price: number // IVA incluido
+  colors: string[]
+  images: string[]
+  measurement_label: string | null
+  engraving_label: string | null
+  production_days: number
+  active: boolean
+  sort_order: number
+}
+
+export interface ShopSettings {
+  id: number
+  enabled: boolean
+  shipping_price: number
+  free_shipping_from: number | null
+}
+
+export interface OrderItem {
+  product_id: string
+  name: string
+  color: string | null
+  measurement: string | null
+  engraving: string | null
+  quantity: number
+  unit_price: number // IVA incluido
+}
+
+export type OrderStatus = 'pending_payment' | 'paid' | 'in_production' | 'shipped' | 'delivered' | 'cancelled'
+
+export interface Order {
+  id: string
+  created_at: string
+  number: number
+  status: OrderStatus
+  customer_name: string
+  customer_email: string
+  customer_phone: string | null
+  address: string
+  postal_code: string
+  city: string
+  province: string
+  notes: string | null
+  items: OrderItem[]
+  subtotal: number
+  shipping: number
+  total: number
+  stripe_session_id: string | null
+  paid_at: string | null
+  tracking_number: string | null
+  invoice_id: string | null
+  income_id: string | null
+}
