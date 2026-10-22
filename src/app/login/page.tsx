@@ -42,30 +42,6 @@ function LoginForm() {
     }
   }
 
-  const handleDirectLogin = async () => {
-    setLoading(true)
-    setError(null)
-
-    const supabase = createClient()
-    const directPassword = process.env.NEXT_PUBLIC_EDITOR_PASSWORD || 'xamape1234'
-
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: 'xamape@gmail.com',
-      password: directPassword,
-    })
-
-    if (authError) {
-      console.error('Direct login error:', authError)
-      setError(
-        'Error en el acceso directo. Asegúrate de configurar la contraseña para xamape@gmail.com en Supabase y .env.local.'
-      )
-      setLoading(false)
-    } else {
-      router.refresh()
-      router.push('/admin/dashboard')
-    }
-  }
-
   return (
     <>
       {hasError && (
@@ -74,27 +50,6 @@ function LoginForm() {
           <span>Error al iniciar sesión. Inténtalo de nuevo.</span>
         </div>
       )}
-
-      {/* Direct Access Button for Editor */}
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full border-primary/30 hover:bg-primary/[0.03] text-primary rounded-xl mb-4 font-semibold gap-1.5 h-11"
-        onClick={handleDirectLogin}
-        disabled={loading}
-      >
-        <PawPrint className="h-4 w-4 shrink-0" />
-        Acceso directo (Editor: xamape)
-      </Button>
-
-      <div className="relative flex items-center justify-center my-4">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <span className="relative bg-background px-3 text-[10px] uppercase text-muted-foreground tracking-wider">
-          O con contraseña
-        </span>
-      </div>
 
       <form onSubmit={handleLogin} className="space-y-4">
         <div className="space-y-1.5">
