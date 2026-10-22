@@ -13,18 +13,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/30">
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
-        <header className="h-14 border-b bg-background px-6 flex items-center justify-between shrink-0">
+    <div className="flex min-h-screen bg-muted/30 print:bg-white">
+      <div className="contents print:hidden">
+        <AdminSidebar />
+      </div>
+      <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0 print:pb-0">
+        <header className="print:hidden h-14 border-b bg-background px-6 flex items-center justify-between shrink-0">
           <div className="text-sm text-muted-foreground">
             <span className="font-display text-base text-foreground">Panel de administración</span>
           </div>
           <HeaderUserMenu email={user.email || ''} />
         </header>
-        <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-4 md:p-6 overflow-auto print:p-0 print:overflow-visible">{children}</main>
       </div>
-      <MobileNav />
+      <div className="print:hidden">
+        <MobileNav />
+      </div>
     </div>
   )
 }

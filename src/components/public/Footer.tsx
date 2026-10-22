@@ -96,7 +96,13 @@ export default function Footer() {
           className="border-t mt-10 pt-6 text-center text-sm"
           style={{ borderColor: '#4A2010', color: '#7A5030' }}
         >
-          <p>© {new Date().getFullYear()} Koto Education. Todos los derechos reservados.</p>
+          <p>
+            © {new Date().getFullYear()} Koto Education. Todos los derechos reservados.
+            <span className="mx-2">·</span>
+            <Link href="/login" className="hover:text-[#F5EDE3] transition-colors">
+              Acceso
+            </Link>
+          </p>
         </div>
       </div>
     </footer>

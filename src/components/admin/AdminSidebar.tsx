@@ -7,6 +7,7 @@ import {
   Users,
   CalendarDays,
   Wallet,
+  FileText,
   Tag,
   Images,
   PawPrint,
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/admin/clientes', icon: Users, label: 'Clientes' },
   { href: '/admin/calendario', icon: CalendarDays, label: 'Calendario' },
   { href: '/admin/contabilidad', icon: Wallet, label: 'Contabilidad' },
+  { href: '/admin/facturas', icon: FileText, label: 'Facturas' },
   { href: '/admin/tarifas', icon: Tag, label: 'Tarifas' },
   { href: '/admin/galeria', icon: Images, label: 'Galería' },
 ]

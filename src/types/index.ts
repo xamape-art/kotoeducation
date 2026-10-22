@@ -5,6 +5,7 @@ export interface Client {
   email: string | null
   phone: string | null
   address: string | null
+  nif?: string | null
   notes: string | null
   pets?: Pet[]
 }
@@ -113,4 +114,33 @@ export interface WalkReport {
   notes: string | null
   photos: string[]
   created_at: string
+}
+
+export interface InvoiceItem {
+  description: string
+  quantity: number
+  unit_price: number // sin IVA
+}
+
+export interface Invoice {
+  id: string
+  created_at: string
+  year: number
+  seq: number
+  number: string
+  date: string
+  client_id: string | null
+  client_name: string
+  client_nif: string | null
+  client_address: string | null
+  items: InvoiceItem[]
+  vat_rate: number
+  subtotal: number
+  vat_amount: number
+  total: number
+  status: 'pending' | 'paid'
+  paid_at: string | null
+  payment_method: 'cash' | 'transfer' | 'card' | null
+  income_id: string | null
+  notes: string | null
 }

@@ -7,6 +7,7 @@ import {
   Users,
   CalendarDays,
   Wallet,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +16,7 @@ const navItems = [
   { href: '/admin/clientes', icon: Users, label: 'Clientes' },
   { href: '/admin/calendario', icon: CalendarDays, label: 'Calendario' },
   { href: '/admin/contabilidad', icon: Wallet, label: 'Finanzas' },
+  { href: '/admin/facturas', icon: FileText, label: 'Facturas' },
 ]
 
 export default function MobileNav() {
