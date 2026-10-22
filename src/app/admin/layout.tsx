@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { isAdmin } from '@/lib/admin'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import HeaderUserMenu from '@/components/admin/HeaderUserMenu'
 import MobileNav from '@/components/admin/MobileNav'
@@ -8,7 +9,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (!user || !isAdmin(user)) {
     redirect('/login')
   }
 

@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { WHATSAPP_HREF } from '@/lib/contact'
 import { createClient } from '@/lib/supabase/client'
+import { isAdmin } from '@/lib/admin'
 import { useCart } from '@/components/public/CartProvider'
 
 const navLinks = [
@@ -49,7 +50,7 @@ export default function Navbar() {
     Promise.all([
       supabase.from('shop_settings').select('enabled').eq('id', 1).maybeSingle(),
       supabase.auth.getUser(),
-    ]).then(([{ data: settings }, { data: auth }]) => setShowShop(!!settings?.enabled || !!auth.user))
+    ]).then(([{ data: settings }, { data: auth }]) => setShowShop(!!settings?.enabled || isAdmin(auth.user)))
   }, [])
 
   const links = showShop

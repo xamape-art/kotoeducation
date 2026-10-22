@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { isAdmin as isAdminUser } from '@/lib/admin'
 import type { ShopSettings } from '@/types'
 
 const defaultSettings: ShopSettings = { id: 1, enabled: false, shipping_price: 0, free_shipping_from: null }
@@ -11,6 +12,6 @@ export async function getShopAccess() {
     supabase.auth.getUser(),
   ])
   const shop: ShopSettings = settings || defaultSettings
-  const isAdmin = !!auth.user
+  const isAdmin = isAdminUser(auth.user)
   return { settings: shop, isAdmin, canView: shop.enabled || isAdmin }
 }
