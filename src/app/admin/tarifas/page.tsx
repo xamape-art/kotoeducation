@@ -25,15 +25,26 @@ import { Plus, Pencil, Tag, ToggleLeft, ToggleRight, Trash2, Loader2 } from 'luc
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
+const defaultCategoryColor = 'bg-gray-50 border-gray-200 text-gray-700'
+
 const categoryColors: Record<string, string> = {
-  Paseos: 'bg-green-50 border-green-200 text-green-700',
-  Visitas: 'bg-blue-50 border-blue-200 text-blue-700',
-  Cuidado: 'bg-orange-50 border-orange-200 text-orange-700',
-  Educación: 'bg-purple-50 border-purple-200 text-purple-700',
-  Extras: 'bg-gray-50 border-gray-200 text-gray-700',
+  walk: 'bg-green-50 border-green-200 text-green-700',
+  visit: 'bg-blue-50 border-blue-200 text-blue-700',
+  care: 'bg-orange-50 border-orange-200 text-orange-700',
+  training: 'bg-purple-50 border-purple-200 text-purple-700',
 }
 
-const CATEGORIES = ['Paseos', 'Visitas', 'Cuidado', 'Educación', 'Extras']
+// Original categories are stored in English; new ones are stored as typed
+const CATEGORY_LABELS: Record<string, string> = {
+  walk: 'Paseos',
+  visit: 'Visitas',
+  care: 'Cuidado',
+  training: 'Educación',
+}
+
+const NEW_CATEGORY = '__new__'
+
+const categoryLabel = (category: string) => CATEGORY_LABELS[category] ?? category
 
 export default function TarifasPage() {
   const supabase = createClient()
@@ -46,7 +57,8 @@ export default function TarifasPage() {
   const [addName, setAddName] = useState('')
   const [addDesc, setAddDesc] = useState('')
   const [addPrice, setAddPrice] = useState('')
-  const [addCategory, setAddCategory] = useState('Paseos')
+  const [addCategory, setAddCategory] = useState('walk')
+  const [addNewCategory, setAddNewCategory] = useState('')
   const [addSaving, setAddSaving] = useState(false)
 
   // Edit dialog
@@ -60,7 +72,7 @@ export default function TarifasPage() {
   const fetchRates = async () => {
     setLoading(true)
     const { data, error } = await supabase
-      .from('rates')
+      .from('services')
       .select('*')
       .order('category')
       .order('name')
@@ -82,7 +94,8 @@ export default function TarifasPage() {
     setAddName('')
     setAddDesc('')
     setAddPrice('')
-    setAddCategory('Paseos')
+    setAddCategory('walk')
+    setAddNewCategory('')
   }
 
   const openEditDialog = (rate: any) => {
@@ -99,16 +112,22 @@ export default function TarifasPage() {
       return
     }
 
+    const category = addCategory === NEW_CATEGORY ? addNewCategory.trim() : addCategory
+    if (!category) {
+      alert('Escribe el nombre de la nueva categoría.')
+      return
+    }
+
     setAddSaving(true)
     try {
       const { data, error } = await supabase
-        .from('rates')
+        .from('services')
         .insert([
           {
             name: addName,
             description: addDesc || null,
             price: Number(addPrice) || 0,
-            category: addCategory,
+            category,
             active: true,
           },
         ])
@@ -136,7 +155,7 @@ export default function TarifasPage() {
     setEditSaving(true)
     try {
       const { data, error } = await supabase
-        .from('rates')
+        .from('services')
         .update({
           name: editName,
           description: editDesc || null,
@@ -162,7 +181,7 @@ export default function TarifasPage() {
   const toggleActive = async (rate: any) => {
     try {
       const { data, error } = await supabase
-        .from('rates')
+        .from('services')
         .update({ active: !rate.active })
         .eq('id', rate.id)
         .select()
@@ -181,7 +200,7 @@ export default function TarifasPage() {
     if (!confirm('¿Estás seguro de que deseas eliminar esta tarifa?')) return
 
     try {
-      const { error } = await supabase.from('rates').delete().eq('id', id)
+      const { error } = await supabase.from('services').delete().eq('id', id)
       if (error) throw error
       setRates((prev) => prev.filter((r) => r.id !== id))
     } catch (err) {
@@ -192,6 +211,7 @@ export default function TarifasPage() {
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   const categories = [...new Set(rates.map((r) => r.category))]
+  const categoryOptions = [...new Set([...Object.keys(CATEGORY_LABELS), ...categories])]
 
   if (loading) {
     return (
@@ -263,19 +283,32 @@ export default function TarifasPage() {
                   <Label>Categoría</Label>
                   <Select
                     value={addCategory}
-                    onValueChange={(val) => setAddCategory(val || 'Paseos')}
+                    onValueChange={(val) => setAddCategory(val || 'walk')}
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue>
+                        {addCategory === NEW_CATEGORY ? 'Nueva categoría...' : categoryLabel(addCategory)}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      {categoryOptions.map((c) => (
+                        <SelectItem key={c} value={c}>{categoryLabel(c)}</SelectItem>
                       ))}
+                      <SelectItem value={NEW_CATEGORY}>+ Nueva categoría...</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+              {addCategory === NEW_CATEGORY && (
+                <div className="space-y-1.5">
+                  <Label>Nombre de la categoría *</Label>
+                  <Input
+                    placeholder="Ej: Peluquería"
+                    value={addNewCategory}
+                    onChange={(e) => setAddNewCategory(e.target.value)}
+                  />
+                </div>
+              )}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setOpenAdd(false)}>
                   Cancelar
@@ -300,7 +333,7 @@ export default function TarifasPage() {
             <div className="flex items-center gap-2 pb-1 border-b">
               <Tag className="h-4 w-4 text-primary" />
               <h2 className="font-display text-lg font-semibold tracking-tight">
-                {category}
+                {categoryLabel(category)}
               </h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -323,11 +356,11 @@ export default function TarifasPage() {
                           <Badge
                             className={cn(
                               'text-[9px] py-0 px-1.5 font-normal',
-                              categoryColors[rate.category]
+                              categoryColors[rate.category] ?? defaultCategoryColor
                             )}
                             variant="outline"
                           >
-                            {rate.category}
+                            {categoryLabel(rate.category)}
                           </Badge>
                           {!rate.active && (
                             <Badge

@@ -31,7 +31,7 @@ export interface Service {
   description: string | null
   price: number
   duration_minutes: number | null
-  category: 'walk' | 'visit' | 'care' | 'training'
+  category: string // 'walk' | 'visit' | 'care' | 'training' or a custom one
   active: boolean
 }
 
