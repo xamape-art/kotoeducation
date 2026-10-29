@@ -30,6 +30,8 @@ import {
   Loader2,
   Euro,
   CheckCircle2,
+  CalendarPlus,
+  Circle,
 } from 'lucide-react'
 import {
   format,
@@ -48,7 +50,9 @@ import { alertDbError } from '@/lib/db-error'
 import { parseDbDate, toDbDate, todayDb } from '@/lib/dates'
 import { categoryLabel, formatPrice } from '@/lib/service-categories'
 import { STATUS_LABELS, STATUS_BADGE, PAYMENT_METHOD_LABELS as METHOD_LABELS } from '@/lib/appointments'
-import type { Appointment, Client, Pet, Service } from '@/types'
+import { EVENT_TYPE_LABELS, EVENT_TYPE_COLORS } from '@/lib/agenda'
+import AgendaEventDialog from '@/components/admin/AgendaEventDialog'
+import type { AgendaEvent, Appointment, Client, Pet, Service } from '@/types'
 
 const SERVICE_COLORS: Record<string, string> = {
   walk: 'border border-emerald-200 bg-emerald-100 text-emerald-900',
@@ -84,7 +88,12 @@ export default function CalendarioPage() {
   const [services, setServices] = useState<Service[]>([])
   // Appointments that already have an income in Contabilidad
   const [paidAptIds, setPaidAptIds] = useState<Set<string>>(new Set())
+  const [events, setEvents] = useState<AgendaEvent[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Agenda event dialog (editingEvent = null means a new event)
+  const [eventOpen, setEventOpen] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<AgendaEvent | null>(null)
 
   // Add / edit form (editingId = null means a new appointment)
   const [formOpen, setFormOpen] = useState(false)
@@ -109,14 +118,17 @@ export default function CalendarioPage() {
   // ─── Fetch ───────────────────────────────────────────────────────────────────
   const fetchAll = async () => {
     setLoading(true)
-    const [apts, cls, svcs, inc] = await Promise.all([
+    const [apts, cls, svcs, inc, evs] = await Promise.all([
       supabase.from('appointments').select(APT_SELECT).order('date').order('time'),
       supabase.from('clients').select('id, name, pets(id, name)').order('name'),
       supabase.from('services').select('*').order('category').order('name'),
       supabase.from('income').select('appointment_id').not('appointment_id', 'is', null),
+      supabase.from('agenda_events').select('*').order('date').order('time', { nullsFirst: true }),
     ])
 
     if (apts.error) alertDbError(apts.error, 'cargar las citas')
+    else if (evs.error) alertDbError(evs.error, 'cargar la agenda')
+    setEvents(evs.data || [])
     setAppointments((apts.data || []).map(toApt))
     setClientsList((cls.data as ClientWithPets[]) || [])
     setServices(svcs.data || [])
@@ -136,6 +148,14 @@ export default function CalendarioPage() {
 
   const getAppointmentsForDay = (day: Date) =>
     appointments.filter((a) => isSameDay(a.day, day))
+
+  // All-day events first, then by time
+  const getEventsForDay = (day: Date) =>
+    events
+      .filter((e) => e.date === toDbDate(day))
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
+
+  const selectedDayEvents = selectedDay ? getEventsForDay(selectedDay) : []
 
   const selectedDayAppointments = selectedDay
     ? getAppointmentsForDay(selectedDay).sort((a, b) => a.time.localeCompare(b.time))
@@ -281,6 +301,31 @@ export default function CalendarioPage() {
     }
   }
 
+  // ─── Agenda events ───────────────────────────────────────────────────────────
+  const openEvent = (ev: AgendaEvent | null) => {
+    setEditingEvent(ev)
+    setEventOpen(true)
+  }
+
+  const saveEventLocally = (ev: AgendaEvent) => {
+    setEvents((prev) => (prev.some((e) => e.id === ev.id) ? prev.map((e) => (e.id === ev.id ? ev : e)) : [...prev, ev]))
+    setSelectedDay(parseDbDate(ev.date))
+  }
+
+  const toggleEventDone = async (ev: AgendaEvent) => {
+    const { data, error } = await supabase
+      .from('agenda_events')
+      .update({ done: !ev.done, done_at: ev.done ? null : new Date().toISOString() })
+      .eq('id', ev.id)
+      .select()
+      .single()
+    if (error) {
+      alertDbError(error, 'actualizar el evento')
+      return
+    }
+    setEvents((prev) => prev.map((e) => (e.id === ev.id ? data : e)))
+  }
+
   // ─── Delete ──────────────────────────────────────────────────────────────────
   const handleDelete = async (apt: Apt) => {
     const paidNote = paidAptIds.has(apt.id)
@@ -315,10 +360,16 @@ export default function CalendarioPage() {
             {format(currentMonth, 'MMMM yyyy', { locale: es })}
           </p>
         </div>
-        <Button onClick={() => openForm(null)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva cita
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => openEvent(null)}>
+            <CalendarPlus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nuevo evento</span>
+          </Button>
+          <Button onClick={() => openForm(null)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva cita
+          </Button>
+        </div>
       </div>
 
       {/* Legend */}
@@ -331,8 +382,15 @@ export default function CalendarioPage() {
         ))}
         <span className="flex items-center gap-1.5">
           <span className={`w-3 h-3 rounded ${DEFAULT_COLOR}`} />
-          Otros
+          Otros servicios
         </span>
+        <span className="text-muted-foreground">·</span>
+        {Object.entries(EVENT_TYPE_COLORS).map(([type, color]) => (
+          <span key={type} className="flex items-center gap-1.5">
+            <span className={`w-3 h-3 rounded-full ${color}`} />
+            {EVENT_TYPE_LABELS[type]}
+          </span>
+        ))}
       </div>
 
       {/* Stats */}
@@ -370,6 +428,8 @@ export default function CalendarioPage() {
             <p className="text-sm text-muted-foreground">
               {selectedDayAppointments.length} cita
               {selectedDayAppointments.length === 1 ? '' : 's'}
+              {selectedDayEvents.length > 0 &&
+                ` · ${selectedDayEvents.length} evento${selectedDayEvents.length === 1 ? '' : 's'}`}
             </p>
           </CardContent>
         </Card>
@@ -445,6 +505,13 @@ export default function CalendarioPage() {
                     const dayApts = getAppointmentsForDay(day).sort((a, b) =>
                       a.time.localeCompare(b.time)
                     )
+                    const dayEvents = getEventsForDay(day)
+                    const dayCount = dayApts.length + dayEvents.length
+                    // Up to 3 chips per cell: at most 2 events, the rest appointments
+                    const shownEvents = dayEvents.slice(0, 2)
+                    const shownApts = dayApts.slice(0, 3 - shownEvents.length)
+                    const hiddenCount = dayCount - shownEvents.length - shownApts.length
+                    const hasPendingTax = dayEvents.some((e) => e.type === 'tax' && !e.done)
                     const isSelected = selectedDay && isSameDay(day, selectedDay)
                     const isToday = isSameDay(day, new Date())
 
@@ -466,14 +533,29 @@ export default function CalendarioPage() {
                           >
                             {format(day, 'd')}
                           </span>
-                          {dayApts.length > 0 && (
-                            <span className="rounded-full bg-muted px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium text-muted-foreground">
-                              {dayApts.length}
+                          {dayCount > 0 && (
+                            <span
+                              className={`rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium ${
+                                hasPendingTax ? 'bg-orange-100 text-orange-800' : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {dayCount}
                             </span>
                           )}
                         </div>
                         <div className="hidden sm:block space-y-1.5">
-                          {dayApts.slice(0, 3).map((apt) => (
+                          {shownEvents.map((ev) => (
+                            <div
+                              key={ev.id}
+                              className={`rounded-full px-2 py-0.5 text-[11px] leading-tight truncate ${EVENT_TYPE_COLORS[ev.type]} ${
+                                ev.done ? 'opacity-50 line-through' : ''
+                              }`}
+                            >
+                              {ev.time ? `${ev.time.slice(0, 5)} ` : ''}
+                              {ev.title}
+                            </div>
+                          ))}
+                          {shownApts.map((apt) => (
                             <div
                               key={apt.id}
                               className={`rounded-md px-2 py-1 text-[11px] leading-tight ${colorFor(apt)} ${
@@ -484,9 +566,9 @@ export default function CalendarioPage() {
                               <span className="block truncate">{apt.pets?.name}</span>
                             </div>
                           ))}
-                          {dayApts.length > 3 && (
+                          {hiddenCount > 0 && (
                             <div className="px-1 text-[11px] font-medium text-muted-foreground">
-                              +{dayApts.length - 3} más
+                              +{hiddenCount} más
                             </div>
                           )}
                         </div>
@@ -509,13 +591,46 @@ export default function CalendarioPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {selectedDayAppointments.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border p-6 text-center">
-                <p className="text-sm font-medium">Sin citas este día</p>
-                <Button variant="link" size="sm" onClick={() => openForm(null)}>
-                  Crear una cita
-                </Button>
+            {selectedDayEvents.length > 0 && (
+              <div className="space-y-2 mb-3">
+                {selectedDayEvents.map((ev) => (
+                  <div key={ev.id} className={`rounded-xl p-3 ${EVENT_TYPE_COLORS[ev.type]}`}>
+                    <div className="flex items-start gap-2">
+                      <button
+                        className="mt-0.5 shrink-0"
+                        title={ev.done ? 'Marcar como pendiente' : 'Marcar como hecho'}
+                        onClick={() => toggleEventDone(ev)}
+                      >
+                        {ev.done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                      </button>
+                      <button className="flex-1 min-w-0 text-left" onClick={() => openEvent(ev)}>
+                        <p className={`text-sm font-semibold ${ev.done ? 'line-through opacity-60' : ''}`}>
+                          {ev.title}
+                        </p>
+                        <p className="text-[11px] opacity-75">
+                          {EVENT_TYPE_LABELS[ev.type]} · {ev.time ? ev.time.slice(0, 5) : 'Todo el día'}
+                        </p>
+                        {ev.notes && <p className="text-xs mt-1 opacity-80 whitespace-pre-line">{ev.notes}</p>}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
+            )}
+            {selectedDayAppointments.length === 0 ? (
+              selectedDayEvents.length === 0 && (
+                <div className="rounded-xl border border-dashed border-border p-6 text-center">
+                  <p className="text-sm font-medium">Nada este día</p>
+                  <div className="flex justify-center">
+                    <Button variant="link" size="sm" onClick={() => openForm(null)}>
+                      Crear cita
+                    </Button>
+                    <Button variant="link" size="sm" onClick={() => openEvent(null)}>
+                      Crear evento
+                    </Button>
+                  </div>
+                </div>
+              )
             ) : (
               <div className="space-y-3">
                 {selectedDayAppointments.map((apt) => (
@@ -742,6 +857,15 @@ export default function CalendarioPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AgendaEventDialog
+        open={eventOpen}
+        onOpenChange={setEventOpen}
+        event={editingEvent}
+        defaultDate={selectedDay ? toDbDate(selectedDay) : todayDb()}
+        onSaved={saveEventLocally}
+        onDeleted={(id) => setEvents((prev) => prev.filter((e) => e.id !== id))}
+      />
 
       {/* Register payment dialog */}
       <Dialog open={!!payApt} onOpenChange={(o) => !o && setPayApt(null)}>

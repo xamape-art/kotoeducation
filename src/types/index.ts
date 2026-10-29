@@ -204,3 +204,15 @@ export interface Order {
   invoice_id: string | null
   income_id: string | null
 }
+
+export interface AgendaEvent {
+  id: string
+  created_at: string
+  title: string
+  date: string
+  time: string | null
+  type: 'meeting' | 'reminder' | 'tax' | 'other'
+  notes: string | null
+  done: boolean
+  done_at: string | null
+}
