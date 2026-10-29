@@ -158,7 +158,12 @@ export default async function ServiciosPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-20">
         {cards.map((s) => {
           const headline = categoryPrice(rates, s.category)
-          const categoryRates = headline ? rates.filter((r) => r.category === s.category) : []
+          const categoryRates = headline
+            ? rates.filter((r) => r.category === s.category && !r.is_extra)
+            : []
+          const categoryExtras = headline
+            ? rates.filter((r) => r.category === s.category && r.is_extra)
+            : []
           return (
           <Card key={s.id} id={s.id} className={`border-2 ${s.bgColor} ${s.borderColor}`}>
             <CardHeader className="pb-3">
@@ -214,6 +219,19 @@ export default async function ServiciosPage() {
                         {r.description && (
                           <p className="text-xs text-muted-foreground">{r.description}</p>
                         )}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {categoryExtras.length > 0 && (
+                <>
+                  <h4 className="font-semibold text-sm mt-4 mb-2">Extras opcionales:</h4>
+                  <ul className="space-y-1">
+                    {categoryExtras.map((r) => (
+                      <li key={r.id} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-muted-foreground" />
+                        {r.name}: +{formatPrice(r.price)}
                       </li>
                     ))}
                   </ul>

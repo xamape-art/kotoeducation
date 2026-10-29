@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Search, Plus, Phone, Mail, Dog, ChevronRight, Users, Trash2, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { alertDbError } from '@/lib/db-error'
 
 export default function ClientesPage() {
   const supabase = createClient()
@@ -31,6 +32,8 @@ export default function ClientesPage() {
   const [newPhone, setNewPhone] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newAddress, setNewAddress] = useState('')
+  const [newNif, setNewNif] = useState('')
+  const [saving, setSaving] = useState(false)
   const [newNotes, setNewNotes] = useState('')
 
   const fetchClients = async () => {
@@ -44,7 +47,7 @@ export default function ClientesPage() {
       if (error) throw error
       setClients(data || [])
     } catch (err) {
-      console.error('Error fetching clients:', err)
+      alertDbError(err, 'cargar los clientes')
     } finally {
       setLoading(false)
     }
@@ -55,18 +58,20 @@ export default function ClientesPage() {
   }, [])
 
   const handleCreateClient = async () => {
-    if (!newName) {
+    if (!newName.trim()) {
       alert('El nombre es obligatorio.')
       return
     }
 
+    setSaving(true)
     try {
       const newClientObj = {
-        name: newName,
-        email: newEmail || null,
-        phone: newPhone || null,
-        address: newAddress || null,
-        notes: newNotes || null,
+        name: newName.trim(),
+        email: newEmail.trim() || null,
+        phone: newPhone.trim() || null,
+        address: newAddress.trim() || null,
+        nif: newNif.trim().toUpperCase() || null,
+        notes: newNotes.trim() || null,
       }
 
       const { data, error } = await supabase
@@ -77,13 +82,9 @@ export default function ClientesPage() {
       if (error) throw error
 
       if (data && data[0]) {
-        const createdClient = {
-          ...data[0],
-          pets: [],
-          lastAppointment: 'Sin citas',
-          totalAppointments: 0,
-        }
-        setClients((prev) => [createdClient, ...prev])
+        setClients((prev) =>
+          [...prev, { ...data[0], pets: [] }].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+        )
       }
       setOpen(false)
 
@@ -92,37 +93,39 @@ export default function ClientesPage() {
       setNewPhone('')
       setNewEmail('')
       setNewAddress('')
+      setNewNif('')
       setNewNotes('')
     } catch (err) {
-      console.error('Error creating client:', err)
-      alert('Error al guardar el cliente.')
+      alertDbError(err, 'guardar el cliente')
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleDeleteClient = async (id: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (confirm('¿Estás seguro de que deseas eliminar este cliente?')) {
-      try {
-        const { error } = await supabase
-          .from('clients')
-          .delete()
-          .eq('id', id)
-
-        if (error) throw error
-        setClients((prev) => prev.filter((c) => c.id !== id))
-      } catch (err) {
-        console.error('Error deleting client:', err)
-        alert('Error al eliminar el cliente.')
+    if (confirm('¿Eliminar este cliente y sus mascotas? Sus facturas se conservarán.')) {
+      const { error } = await supabase.from('clients').delete().eq('id', id)
+      if (error) {
+        if (error.code === '23503') {
+          alert('Este cliente tiene citas en el calendario, así que no se puede eliminar.')
+        } else {
+          alertDbError(error, 'eliminar')
+        }
+        return
       }
+      setClients((prev) => prev.filter((c) => c.id !== id))
     }
   }
 
+  const q = search.trim().toLowerCase()
   const filtered = clients.filter(
     (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.email?.toLowerCase().includes(search.toLowerCase()) ||
-      c.pets?.some((p: any) => p.name.toLowerCase().includes(search.toLowerCase()))
+      c.name.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.phone?.replace(/\s/g, '').includes(q.replace(/\s/g, '')) ||
+      c.pets?.some((p: any) => p.name.toLowerCase().includes(q))
   )
 
   return (
@@ -160,9 +163,15 @@ export default function ClientesPage() {
                 <Label>Email</Label>
                 <Input type="email" placeholder="email@ejemplo.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Dirección</Label>
-                <Input placeholder="Calle, barrio..." value={newAddress} onChange={(e) => setNewAddress(e.target.value)} />
+              <div className="grid grid-cols-[1fr_140px] gap-3">
+                <div className="space-y-1.5">
+                  <Label>Dirección</Label>
+                  <Input placeholder="Calle, barrio..." value={newAddress} onChange={(e) => setNewAddress(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>DNI / NIF</Label>
+                  <Input placeholder="Opcional" value={newNif} onChange={(e) => setNewNif(e.target.value)} />
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label>Notas</Label>
@@ -170,7 +179,10 @@ export default function ClientesPage() {
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                <Button onClick={handleCreateClient}>Guardar cliente</Button>
+                <Button onClick={handleCreateClient} disabled={saving}>
+                  {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                  Guardar cliente
+                </Button>
               </div>
             </div>
           </DialogContent>
@@ -182,7 +194,7 @@ export default function ClientesPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Buscar por nombre, email o mascota..."
+          placeholder="Buscar por nombre, teléfono, email o mascota..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

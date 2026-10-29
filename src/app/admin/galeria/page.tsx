@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Plus, Pencil, Trash2, Eye, EyeOff, Upload, Camera, Loader2, ImageIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { alertDbError } from '@/lib/db-error'
 
 const BUCKET = 'gallery'
 
@@ -152,8 +153,7 @@ export default function GaleriaAdminPage() {
       setOpenUpload(false)
       resetUploadForm()
     } catch (err) {
-      console.error('Error uploading photo:', err)
-      alert('Error al subir la foto. Asegúrate de que el bucket "gallery" existe y es público.')
+      alertDbError(err, 'subir la foto')
     } finally {
       setUploading(false)
     }
@@ -175,7 +175,7 @@ export default function GaleriaAdminPage() {
         )
       }
     } catch (err) {
-      console.error('Error toggling photo visibility:', err)
+      alertDbError(err, 'cambiar la visibilidad de la foto')
     }
   }
 
@@ -208,8 +208,7 @@ export default function GaleriaAdminPage() {
       }
       setEditingPhoto(null)
     } catch (err) {
-      console.error('Error updating photo:', err)
-      alert('Error al actualizar la foto.')
+      alertDbError(err, 'actualizar la foto')
     } finally {
       setEditSaving(false)
     }
@@ -217,26 +216,20 @@ export default function GaleriaAdminPage() {
 
   // ─── Delete ──────────────────────────────────────────────────────────────────
   const deletePhoto = async (photo: any) => {
+    if (!confirm('¿Eliminar esta foto? No se puede deshacer.')) return
     try {
-      // Extract filename from URL to delete from Storage
-      if (photo.url) {
-        const urlParts = photo.url.split(`/${BUCKET}/`)
-        if (urlParts.length > 1) {
-          const filename = urlParts[1]
-          await supabase.storage.from(BUCKET).remove([filename])
-        }
-      }
-
       const { error } = await supabase
         .from('gallery_photos')
         .delete()
         .eq('id', photo.id)
 
       if (error) throw error
+      // Remove the file once the record is gone, so a failed delete never leaves a broken photo
+      const path = photo.storage_path || photo.url?.split(`/${BUCKET}/`)[1]
+      if (path) await supabase.storage.from(BUCKET).remove([path])
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id))
     } catch (err) {
-      console.error('Error deleting photo:', err)
-      alert('Error al eliminar la foto.')
+      alertDbError(err, 'eliminar')
     }
   }
 
@@ -319,6 +312,7 @@ export default function GaleriaAdminPage() {
                 <div className="space-y-1.5">
                   <Label>Categoría</Label>
                   <Select
+                    items={categoryLabels}
                     value={uploadCategory}
                     onValueChange={(val) => setUploadCategory(val || 'general')}
                   >
@@ -541,6 +535,7 @@ export default function GaleriaAdminPage() {
               <div className="space-y-1.5">
                 <Label>Categoría</Label>
                 <Select
+                  items={categoryLabels}
                   value={editCategory}
                   onValueChange={(val) =>
                     setEditCategory(val || 'general')

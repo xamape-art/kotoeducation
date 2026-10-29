@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { ArrowLeft, Plus, Trash2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { calcTotals, calcTotalsFromGross, formatEuro, formatInvoiceNumber, DEFAULT_VAT_RATE } from '@/lib/invoice'
+import { calcTotals, calcTotalsFromGross, formatEuro, formatInvoiceNumber, formatDate, DEFAULT_VAT_RATE } from '@/lib/invoice'
+import { alertDbError } from '@/lib/db-error'
+import { todayDb } from '@/lib/dates'
 import type { Client, Invoice, Service } from '@/types'
 
 const nativeSelect =
@@ -25,7 +27,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 // Base prices derived from IVA-included prices keep extra decimals so totals add up
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6
 
-export default function InvoiceForm({ invoice }: { invoice?: Invoice }) {
+export default function InvoiceForm({ invoice, initialClientId }: { invoice?: Invoice; initialClientId?: string }) {
   const supabase = createClient()
   const router = useRouter()
 
@@ -37,7 +39,7 @@ export default function InvoiceForm({ invoice }: { invoice?: Invoice }) {
   const [clientName, setClientName] = useState(invoice?.client_name || '')
   const [clientNif, setClientNif] = useState(invoice?.client_nif || '')
   const [clientAddress, setClientAddress] = useState(invoice?.client_address || '')
-  const [date, setDate] = useState(invoice?.date || new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState(invoice?.date || todayDb())
   const [vatRate, setVatRate] = useState(String(invoice?.vat_rate ?? DEFAULT_VAT_RATE))
   // Tarifas are public prices with IVA included, so the user types final prices by default
   const [pricesIncludeVat, setPricesIncludeVat] = useState(true)
@@ -54,12 +56,22 @@ export default function InvoiceForm({ invoice }: { invoice?: Invoice }) {
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: c }, { data: s }] = await Promise.all([
+      const [{ data: c, error: cErr }, { data: s }] = await Promise.all([
         supabase.from('clients').select('*').order('name'),
         supabase.from('services').select('*').eq('active', true).order('name'),
       ])
+      if (cErr) alertDbError(cErr, 'cargar los clientes')
       setClients(c || [])
       setServices(s || [])
+
+      // Coming from a client's page: fill in their details
+      const preselected = !invoice && initialClientId ? c?.find((cl) => cl.id === initialClientId) : undefined
+      if (preselected) {
+        setClientId(preselected.id)
+        setClientName(preselected.name)
+        setClientNif(preselected.nif || '')
+        setClientAddress(preselected.address || '')
+      }
     }
     load()
   }, [])
@@ -134,21 +146,41 @@ export default function InvoiceForm({ invoice }: { invoice?: Invoice }) {
 
       // Remember the NIF on the client record for next time
       if (clientId && clientNif.trim()) {
-        await supabase.from('clients').update({ nif: clientNif.trim() }).eq('id', clientId)
+        await supabase.from('clients').update({ nif: clientNif.trim().toUpperCase() }).eq('id', clientId)
       }
 
       if (invoice) {
         const { error } = await supabase.from('invoices').update(payload).eq('id', invoice.id)
         if (error) throw error
+        // A paid invoice has an income in Contabilidad that must keep the same amount
+        if (invoice.income_id) {
+          const { error: incErr } = await supabase
+            .from('income')
+            .update({ amount: totals.total, description: `Factura ${invoice.number} · ${payload.client_name}` })
+            .eq('id', invoice.income_id)
+          if (incErr) throw incErr
+        }
         router.push(`/admin/facturas/${invoice.id}`)
       } else {
         const year = Number(date.slice(0, 4))
-        const { data: last } = await supabase
+        const { data: last, error: lastErr } = await supabase
           .from('invoices')
-          .select('seq')
+          .select('seq, date')
           .eq('year', year)
           .order('seq', { ascending: false })
           .limit(1)
+        if (lastErr) throw lastErr
+
+        // Numbers must follow the dates: a new invoice can't be dated before the previous one
+        const lastDate = last?.[0]?.date
+        if (lastDate && date < lastDate) {
+          alert(
+            `La última factura de ${year} es del ${formatDate(lastDate)}. ` +
+              'La nueva factura no puede tener una fecha anterior, porque la numeración debe seguir el orden de las fechas.'
+          )
+          setSaving(false)
+          return
+        }
         const seq = (last?.[0]?.seq || 0) + 1
 
         const { data, error } = await supabase
@@ -159,8 +191,7 @@ export default function InvoiceForm({ invoice }: { invoice?: Invoice }) {
         router.push(`/admin/facturas/${data[0].id}`)
       }
     } catch (err) {
-      console.error('Error saving invoice:', err)
-      alert('Error al guardar la factura.')
+      alertDbError(err, 'guardar la factura')
       setSaving(false)
     }
   }

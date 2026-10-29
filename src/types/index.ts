@@ -33,6 +33,7 @@ export interface Service {
   duration_minutes: number | null
   category: string // 'walk' | 'visit' | 'care' | 'training' or a custom one
   active: boolean
+  is_extra?: boolean
 }
 
 export interface Appointment {

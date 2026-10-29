@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Service } from '@/types'
+import { formatPrice } from '@/lib/service-categories'
 
 // Active services from the admin "Tarifas" page, cheapest first
 export async function getPublicServices(): Promise<Service[]> {
@@ -15,14 +16,13 @@ export async function getPublicServices(): Promise<Service[]> {
   return (data as Service[]) || []
 }
 
-export function formatPrice(price: number) {
-  return `${Number(price).toLocaleString('es-ES', { maximumFractionDigits: 2 })}€`
-}
+export { formatPrice }
 
-// Headline price for a category: null when nothing has a price yet (price 0 = no price)
+// Headline price for a category: null when nothing has a price yet (price 0 = no price).
+// Extras are add-ons, so they don't count for the "desde" price.
 export function categoryPrice(services: Service[], category: string) {
   const prices = services
-    .filter((s) => s.category === category && Number(s.price) > 0)
+    .filter((s) => s.category === category && !s.is_extra && Number(s.price) > 0)
     .map((s) => Number(s.price))
   if (prices.length === 0) return null
   return { price: formatPrice(Math.min(...prices)), from: new Set(prices).size > 1 }

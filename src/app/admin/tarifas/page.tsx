@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -24,6 +23,9 @@ import {
 import { Plus, Pencil, Tag, ToggleLeft, ToggleRight, Trash2, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { alertDbError } from '@/lib/db-error'
+import { CATEGORY_LABELS, categoryLabel, formatPrice } from '@/lib/service-categories'
+import type { Service } from '@/types'
 
 const defaultCategoryColor = 'bg-gray-50 border-gray-200 text-gray-700'
 
@@ -34,39 +36,25 @@ const categoryColors: Record<string, string> = {
   training: 'bg-purple-50 border-purple-200 text-purple-700',
 }
 
-// Original categories are stored in English; new ones are stored as typed
-const CATEGORY_LABELS: Record<string, string> = {
-  walk: 'Paseos',
-  visit: 'Visitas',
-  care: 'Cuidado',
-  training: 'Educación',
-}
-
 const NEW_CATEGORY = '__new__'
-
-const categoryLabel = (category: string) => CATEGORY_LABELS[category] ?? category
 
 export default function TarifasPage() {
   const supabase = createClient()
 
-  const [rates, setRates] = useState<any[]>([])
+  const [rates, setRates] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Add dialog
-  const [openAdd, setOpenAdd] = useState(false)
-  const [addName, setAddName] = useState('')
-  const [addDesc, setAddDesc] = useState('')
-  const [addPrice, setAddPrice] = useState('')
-  const [addCategory, setAddCategory] = useState('walk')
-  const [addNewCategory, setAddNewCategory] = useState('')
-  const [addSaving, setAddSaving] = useState(false)
-
-  // Edit dialog
-  const [editRate, setEditRate] = useState<any>(null)
-  const [editName, setEditName] = useState('')
-  const [editDesc, setEditDesc] = useState('')
-  const [editPrice, setEditPrice] = useState('')
-  const [editSaving, setEditSaving] = useState(false)
+  // Add / edit dialog (editing = null means a new rate)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<Service | null>(null)
+  const [name, setName] = useState('')
+  const [desc, setDesc] = useState('')
+  const [price, setPrice] = useState('')
+  const [duration, setDuration] = useState('')
+  const [category, setCategory] = useState('walk')
+  const [newCategory, setNewCategory] = useState('')
+  const [isExtra, setIsExtra] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // ─── Fetch ───────────────────────────────────────────────────────────────────
   const fetchRates = async () => {
@@ -78,7 +66,7 @@ export default function TarifasPage() {
       .order('name')
 
     if (error) {
-      console.error('Error fetching rates:', error)
+      alertDbError(error, 'cargar las tarifas')
     } else {
       setRates(data || [])
     }
@@ -90,128 +78,114 @@ export default function TarifasPage() {
   }, [])
 
   // ─── Helpers ─────────────────────────────────────────────────────────────────
-  const resetAddForm = () => {
-    setAddName('')
-    setAddDesc('')
-    setAddPrice('')
-    setAddCategory('walk')
-    setAddNewCategory('')
+  const openForm = (rate: Service | null) => {
+    setEditing(rate)
+    setName(rate?.name || '')
+    setDesc(rate?.description || '')
+    setPrice(rate ? String(rate.price) : '')
+    setDuration(rate?.duration_minutes ? String(rate.duration_minutes) : '')
+    setCategory(rate?.category || 'walk')
+    setNewCategory('')
+    setIsExtra(!!rate?.is_extra)
+    setFormOpen(true)
   }
 
-  const openEditDialog = (rate: any) => {
-    setEditRate(rate)
-    setEditName(rate.name)
-    setEditDesc(rate.description || '')
-    setEditPrice(String(rate.price))
-  }
-
-  // ─── Create ──────────────────────────────────────────────────────────────────
-  const handleAddRate = async () => {
-    if (!addName || !addPrice) {
+  // ─── Create / update ─────────────────────────────────────────────────────────
+  const handleSave = async () => {
+    if (!name.trim() || price === '') {
       alert('El nombre y el precio son obligatorios.')
       return
     }
+    if (Number(price) < 0) {
+      alert('El precio no puede ser negativo.')
+      return
+    }
 
-    const category = addCategory === NEW_CATEGORY ? addNewCategory.trim() : addCategory
-    if (!category) {
+    const finalCategory = category === NEW_CATEGORY ? newCategory.trim() : category
+    if (!finalCategory) {
       alert('Escribe el nombre de la nueva categoría.')
       return
     }
 
-    setAddSaving(true)
-    try {
-      const { data, error } = await supabase
-        .from('services')
-        .insert([
-          {
-            name: addName,
-            description: addDesc || null,
-            price: Number(addPrice) || 0,
-            category,
-            active: true,
-          },
-        ])
-        .select()
-
-      if (error) throw error
-      if (data && data[0]) setRates((prev) => [...prev, data[0]])
-      setOpenAdd(false)
-      resetAddForm()
-    } catch (err) {
-      console.error('Error creating rate:', err)
-      alert('Error al guardar la tarifa.')
-    } finally {
-      setAddSaving(false)
-    }
-  }
-
-  // ─── Update ──────────────────────────────────────────────────────────────────
-  const handleUpdateRate = async () => {
-    if (!editName || !editPrice) {
-      alert('El nombre y el precio son obligatorios.')
-      return
+    const payload = {
+      name: name.trim(),
+      description: desc.trim() || null,
+      price: Number(price) || 0,
+      duration_minutes: Number(duration) > 0 ? Math.round(Number(duration)) : null,
+      category: finalCategory,
+      is_extra: isExtra,
     }
 
-    setEditSaving(true)
+    setSaving(true)
     try {
-      const { data, error } = await supabase
-        .from('services')
-        .update({
-          name: editName,
-          description: editDesc || null,
-          price: Number(editPrice) || 0,
-        })
-        .eq('id', editRate.id)
-        .select()
-
-      if (error) throw error
-      if (data && data[0]) {
-        setRates((prev) => prev.map((r) => (r.id === editRate.id ? data[0] : r)))
+      if (editing) {
+        const { data, error } = await supabase
+          .from('services')
+          .update(payload)
+          .eq('id', editing.id)
+          .select()
+          .single()
+        if (error) throw error
+        setRates((prev) => prev.map((r) => (r.id === editing.id ? data : r)))
+      } else {
+        const { data, error } = await supabase
+          .from('services')
+          .insert([{ ...payload, active: true }])
+          .select()
+          .single()
+        if (error) throw error
+        setRates((prev) => [...prev, data])
       }
-      setEditRate(null)
+      setFormOpen(false)
     } catch (err) {
-      console.error('Error updating rate:', err)
-      alert('Error al actualizar la tarifa.')
+      alertDbError(err, 'guardar la tarifa')
     } finally {
-      setEditSaving(false)
+      setSaving(false)
     }
   }
 
   // ─── Toggle active ────────────────────────────────────────────────────────────
-  const toggleActive = async (rate: any) => {
-    try {
-      const { data, error } = await supabase
-        .from('services')
-        .update({ active: !rate.active })
-        .eq('id', rate.id)
-        .select()
+  const toggleActive = async (rate: Service) => {
+    const { data, error } = await supabase
+      .from('services')
+      .update({ active: !rate.active })
+      .eq('id', rate.id)
+      .select()
+      .single()
 
-      if (error) throw error
-      if (data && data[0]) {
-        setRates((prev) => prev.map((r) => (r.id === rate.id ? data[0] : r)))
-      }
-    } catch (err) {
-      console.error('Error toggling rate:', err)
+    if (error) {
+      alertDbError(error, 'cambiar el estado de la tarifa')
+      return
     }
+    setRates((prev) => prev.map((r) => (r.id === rate.id ? data : r)))
   }
 
   // ─── Delete ──────────────────────────────────────────────────────────────────
-  const handleDeleteRate = async (id: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta tarifa?')) return
+  const handleDeleteRate = async (rate: Service) => {
+    if (!confirm(`¿Eliminar la tarifa "${rate.name}"?`)) return
 
-    try {
-      const { error } = await supabase.from('services').delete().eq('id', id)
-      if (error) throw error
-      setRates((prev) => prev.filter((r) => r.id !== id))
-    } catch (err) {
-      console.error('Error deleting rate:', err)
-      alert('Error al eliminar la tarifa.')
+    const { error } = await supabase.from('services').delete().eq('id', rate.id)
+    if (error) {
+      if (error.code === '23503') {
+        alert(
+          'Esta tarifa tiene citas en el calendario, así que no se puede eliminar. ' +
+            'Desactívala con el interruptor para que deje de salir en la web.'
+        )
+      } else {
+        alertDbError(error, 'eliminar')
+      }
+      return
     }
+    setRates((prev) => prev.filter((r) => r.id !== rate.id))
   }
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   const categories = [...new Set(rates.map((r) => r.category))]
   const categoryOptions = [...new Set([...Object.keys(CATEGORY_LABELS), ...categories])]
+  const categoryItems = {
+    ...Object.fromEntries(categoryOptions.map((c) => [c, categoryLabel(c)])),
+    [NEW_CATEGORY]: '+ Nueva categoría...',
+  }
 
   if (loading) {
     return (
@@ -229,116 +203,28 @@ export default function TarifasPage() {
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Tarifas</h1>
           <p className="text-muted-foreground text-sm">
-            {rates.filter((r) => r.active).length} servicios activos
+            {rates.filter((r) => r.active).length} servicios activos · los activos se muestran en la web
           </p>
         </div>
-        <Dialog
-          open={openAdd}
-          onOpenChange={(o) => {
-            setOpenAdd(o)
-            if (!o) resetAddForm()
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button className="rounded-xl">
-              <Plus className="h-4 w-4 mr-2" />
-              Nueva tarifa
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Nueva tarifa</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="space-y-1.5">
-                <Label>Nombre *</Label>
-                <Input
-                  placeholder="Ej: Paseo 30 min"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Descripción</Label>
-                <Textarea
-                  placeholder="Descripción del servicio..."
-                  rows={2}
-                  value={addDesc}
-                  onChange={(e) => setAddDesc(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Precio (€) *</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    placeholder="10"
-                    value={addPrice}
-                    onChange={(e) => setAddPrice(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Categoría</Label>
-                  <Select
-                    value={addCategory}
-                    onValueChange={(val) => setAddCategory(val || 'walk')}
-                  >
-                    <SelectTrigger>
-                      <SelectValue>
-                        {addCategory === NEW_CATEGORY ? 'Nueva categoría...' : categoryLabel(addCategory)}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoryOptions.map((c) => (
-                        <SelectItem key={c} value={c}>{categoryLabel(c)}</SelectItem>
-                      ))}
-                      <SelectItem value={NEW_CATEGORY}>+ Nueva categoría...</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {addCategory === NEW_CATEGORY && (
-                <div className="space-y-1.5">
-                  <Label>Nombre de la categoría *</Label>
-                  <Input
-                    placeholder="Ej: Peluquería"
-                    value={addNewCategory}
-                    onChange={(e) => setAddNewCategory(e.target.value)}
-                  />
-                </div>
-              )}
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setOpenAdd(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleAddRate} disabled={addSaving}>
-                  {addSaving ? (
-                    <><Loader2 className="h-3 w-3 animate-spin mr-1" />Guardando...</>
-                  ) : (
-                    'Guardar'
-                  )}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button className="rounded-xl" onClick={() => openForm(null)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nueva tarifa
+        </Button>
       </div>
 
       {/* Categories sections */}
       <div className="space-y-8">
-        {categories.map((category) => (
-          <div key={category} className="space-y-4">
+        {categories.map((cat) => (
+          <div key={cat} className="space-y-4">
             <div className="flex items-center gap-2 pb-1 border-b">
               <Tag className="h-4 w-4 text-primary" />
               <h2 className="font-display text-lg font-semibold tracking-tight">
-                {categoryLabel(category)}
+                {categoryLabel(cat)}
               </h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {rates
-                .filter((r) => r.category === category)
+                .filter((r) => r.category === cat)
                 .map((rate) => (
                   <Card
                     key={rate.id}
@@ -362,6 +248,16 @@ export default function TarifasPage() {
                           >
                             {categoryLabel(rate.category)}
                           </Badge>
+                          {rate.is_extra && (
+                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 font-normal">
+                              Extra
+                            </Badge>
+                          )}
+                          {rate.duration_minutes && (
+                            <Badge variant="outline" className="text-[9px] py-0 px-1.5 font-normal">
+                              {rate.duration_minutes} min
+                            </Badge>
+                          )}
                           {!rate.active && (
                             <Badge
                               variant="outline"
@@ -385,14 +281,16 @@ export default function TarifasPage() {
                       )}
                       <div className="flex items-center justify-between mt-auto pt-2 border-t">
                         <span className="text-base font-bold text-primary">
-                          {rate.price > 0 ? `${rate.price}€` : '0€'}
+                          {rate.is_extra ? '+' : ''}
+                          {formatPrice(rate.price)}
                         </span>
                         <div className="flex items-center gap-0.5">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-lg"
-                            onClick={() => openEditDialog(rate)}
+                            title="Editar"
+                            onClick={() => openForm(rate)}
                           >
                             <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                           </Button>
@@ -400,6 +298,7 @@ export default function TarifasPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-lg"
+                            title={rate.active ? 'Desactivar' : 'Activar'}
                             onClick={() => toggleActive(rate)}
                           >
                             {rate.active ? (
@@ -412,7 +311,8 @@ export default function TarifasPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteRate(rate.id)}
+                            title="Eliminar"
+                            onClick={() => handleDeleteRate(rate)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -434,56 +334,108 @@ export default function TarifasPage() {
         )}
       </div>
 
-      {/* Edit dialog */}
-      <Dialog
-        open={!!editRate}
-        onOpenChange={(o) => !o && setEditRate(null)}
-      >
+      {/* Add / edit dialog */}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Editar tarifa</DialogTitle>
+            <DialogTitle>{editing ? 'Editar tarifa' : 'Nueva tarifa'}</DialogTitle>
           </DialogHeader>
-          {editRate && (
-            <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label>Nombre *</Label>
+              <Input
+                placeholder="Ej: Paseo 30 min"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Descripción</Label>
+              <Textarea
+                placeholder="Descripción del servicio..."
+                rows={2}
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Nombre</Label>
-                <Input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Descripción</Label>
-                <Textarea
-                  rows={2}
-                  value={editDesc}
-                  onChange={(e) => setEditDesc(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Precio (€)</Label>
+                <Label>Precio (€) *</Label>
                 <Input
                   type="number"
                   min="0"
                   step="0.5"
-                  value={editPrice}
-                  onChange={(e) => setEditPrice(e.target.value)}
+                  placeholder="10"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
                 />
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setEditRate(null)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleUpdateRate} disabled={editSaving}>
-                  {editSaving ? (
-                    <><Loader2 className="h-3 w-3 animate-spin mr-1" />Guardando...</>
-                  ) : (
-                    'Guardar cambios'
-                  )}
-                </Button>
+              <div className="space-y-1.5">
+                <Label>Duración (min)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="5"
+                  placeholder="Opcional"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                />
               </div>
             </div>
-          )}
+            <div className="space-y-1.5">
+              <Label>Categoría</Label>
+              <Select
+                items={categoryItems}
+                value={category}
+                onValueChange={(val) => setCategory(val || 'walk')}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(categoryItems).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {category === NEW_CATEGORY && (
+              <div className="space-y-1.5">
+                <Label>Nombre de la categoría *</Label>
+                <Input
+                  placeholder="Ej: Peluquería"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                />
+              </div>
+            )}
+            <label className="flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 mt-0.5 accent-primary"
+                checked={isExtra}
+                onChange={(e) => setIsExtra(e.target.checked)}
+              />
+              <span>
+                Es un extra o suplemento
+                <span className="block text-xs text-muted-foreground">
+                  En la web sale como &quot;+{price || '0'}€&quot; y no cuenta para el precio &quot;desde&quot;.
+                </span>
+              </span>
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setFormOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={saving}>
+                {saving ? (
+                  <><Loader2 className="h-3 w-3 animate-spin mr-1" />Guardando...</>
+                ) : (
+                  'Guardar'
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

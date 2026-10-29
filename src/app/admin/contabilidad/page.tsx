@@ -30,13 +30,16 @@ import {
   Legend,
 } from 'recharts'
 import { Plus, TrendingUp, TrendingDown, Wallet, Edit, Trash2, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { alertDbError } from '@/lib/db-error'
+import { todayDb } from '@/lib/dates'
+import { PAYMENT_METHOD_LABELS as methodLabel } from '@/lib/appointments'
 
-const methodLabel: Record<string, string> = {
-  cash: 'Efectivo',
-  transfer: 'Transferencia',
-  card: 'Tarjeta',
-}
+const EXPENSE_CATEGORIES = ['Suministros', 'Equipo', 'Transporte', 'Formación', 'Seguros', 'Impuestos y tasas', 'Otros']
+
+// Income created from an invoice or a shop order is managed from there
+type IncomeLink = { label: string; href: string }
 
 const methodColor: Record<string, string> = {
   cash: 'bg-emerald-50 border-emerald-200 text-emerald-700',
@@ -73,6 +76,9 @@ export default function ContabilidadPage() {
   const [loading, setLoading] = useState(true)
   const [incomeList, setIncomeList] = useState<any[]>([])
   const [expenseList, setExpenseList] = useState<any[]>([])
+  const [incomeLinks, setIncomeLinks] = useState<Record<string, IncomeLink>>({})
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [saving, setSaving] = useState(false)
 
   // Modal Open States
   const [incomeOpen, setIncomeOpen] = useState(false)
@@ -86,11 +92,13 @@ export default function ContabilidadPage() {
   const [incDesc, setIncDesc] = useState('')
   const [incAmount, setIncAmount] = useState('')
   const [incMethod, setIncMethod] = useState('cash')
+  const [incDate, setIncDate] = useState(todayDb())
 
   // Form states for expense
   const [expDesc, setExpDesc] = useState('')
   const [expAmount, setExpAmount] = useState('')
   const [expCategory, setExpCategory] = useState('Suministros')
+  const [expDate, setExpDate] = useState(todayDb())
 
   const fetchTransactions = async () => {
     try {
@@ -109,10 +117,19 @@ export default function ContabilidadPage() {
 
       if (expErr) throw expErr
 
+      const [{ data: invData }, { data: ordData }] = await Promise.all([
+        supabase.from('invoices').select('id, number, income_id').not('income_id', 'is', null),
+        supabase.from('orders').select('id, number, income_id').not('income_id', 'is', null),
+      ])
+      const links: Record<string, IncomeLink> = {}
+      for (const o of ordData || []) links[o.income_id] = { label: `Pedido #${o.number}`, href: '/admin/pedidos' }
+      for (const i of invData || []) links[i.income_id] = { label: `Factura ${i.number}`, href: `/admin/facturas/${i.id}` }
+
       setIncomeList(incData || [])
       setExpenseList(expData || [])
+      setIncomeLinks(links)
     } catch (err) {
-      console.error('Error fetching transactions:', err)
+      alertDbError(err, 'cargar la contabilidad')
     } finally {
       setLoading(false)
     }
@@ -140,6 +157,14 @@ export default function ContabilidadPage() {
   const totalExpenses = currentMonthExpenses.reduce((s, e) => s + Number(e.amount), 0)
   const profit = totalIncome - totalExpenses
 
+  const years = Array.from(
+    new Set([currentYear, ...[...incomeList, ...expenseList].map((i) => getYearAndMonth(i.date).year)])
+  )
+    .filter(Boolean)
+    .sort((a, b) => b - a)
+  const yearIncome = incomeList.filter((i) => getYearAndMonth(i.date).year === year)
+  const yearExpenses = expenseList.filter((e) => getYearAndMonth(e.date).year === year)
+
   // Annual Summary Calculations for the Chart (Jan to Dec)
   const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
   const monthlyData = monthNames.map((name, index) => ({
@@ -148,21 +173,18 @@ export default function ContabilidadPage() {
     gastos: 0,
   }))
 
-  incomeList.forEach((item) => {
-    const { year, month } = getYearAndMonth(item.date)
-    if (year === currentYear && month >= 0 && month < 12) {
-      monthlyData[month].ingresos += Number(item.amount)
-    }
+  yearIncome.forEach((item) => {
+    const { month } = getYearAndMonth(item.date)
+    if (month >= 0 && month < 12) monthlyData[month].ingresos += Number(item.amount)
   })
 
-  expenseList.forEach((item) => {
-    const { year, month } = getYearAndMonth(item.date)
-    if (year === currentYear && month >= 0 && month < 12) {
-      monthlyData[month].gastos += Number(item.amount)
-    }
+  yearExpenses.forEach((item) => {
+    const { month } = getYearAndMonth(item.date)
+    if (month >= 0 && month < 12) monthlyData[month].gastos += Number(item.amount)
   })
 
-  const activeMonthlyData = monthlyData.slice(0, Math.max(currentMonth + 1, 6))
+  // Current year: show up to this month; past years: the whole year
+  const activeMonthlyData = year === currentYear ? monthlyData.slice(0, Math.max(currentMonth + 1, 6)) : monthlyData
 
   const totalAnnualIncome = monthlyData.reduce((s, m) => s + m.ingresos, 0)
   const totalAnnualExpenses = monthlyData.reduce((s, m) => s + m.gastos, 0)
@@ -174,6 +196,7 @@ export default function ContabilidadPage() {
     setIncDesc('')
     setIncAmount('')
     setIncMethod('cash')
+    setIncDate(todayDb())
     setIncomeOpen(true)
   }
 
@@ -182,6 +205,7 @@ export default function ContabilidadPage() {
     setIncDesc(income.description)
     setIncAmount(String(income.amount))
     setIncMethod(income.payment_method)
+    setIncDate(income.date)
     setIncomeOpen(true)
   }
 
@@ -190,6 +214,7 @@ export default function ContabilidadPage() {
     setExpDesc('')
     setExpAmount('')
     setExpCategory('Suministros')
+    setExpDate(todayDb())
     setExpenseOpen(true)
   }
 
@@ -198,22 +223,28 @@ export default function ContabilidadPage() {
     setExpDesc(expense.description)
     setExpAmount(String(expense.amount))
     setExpCategory(expense.category)
+    setExpDate(expense.date)
     setExpenseOpen(true)
   }
 
   // Save Handlers
   const handleSaveIncome = async () => {
-    if (!incDesc || !incAmount) {
-      alert('La descripción y el importe son obligatorios.')
+    if (!incDesc.trim() || !incAmount || !incDate) {
+      alert('La descripción, el importe y la fecha son obligatorios.')
+      return
+    }
+    if (!(Number(incAmount) > 0)) {
+      alert('El importe debe ser mayor que 0.')
       return
     }
 
+    setSaving(true)
     try {
       const payload = {
-        description: incDesc,
-        amount: Number(incAmount) || 0,
+        description: incDesc.trim(),
+        amount: Number(incAmount),
         payment_method: incMethod,
-        date: editingIncome ? editingIncome.date : new Date().toISOString().split('T')[0],
+        date: incDate,
       }
 
       if (editingIncome) {
@@ -240,23 +271,29 @@ export default function ContabilidadPage() {
       }
       setIncomeOpen(false)
     } catch (err) {
-      console.error('Error saving income:', err)
-      alert('Error al guardar el ingreso.')
+      alertDbError(err, 'guardar el ingreso')
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleSaveExpense = async () => {
-    if (!expDesc || !expAmount) {
-      alert('La descripción y el importe son obligatorios.')
+    if (!expDesc.trim() || !expAmount || !expDate) {
+      alert('La descripción, el importe y la fecha son obligatorios.')
+      return
+    }
+    if (!(Number(expAmount) > 0)) {
+      alert('El importe debe ser mayor que 0.')
       return
     }
 
+    setSaving(true)
     try {
       const payload = {
-        description: expDesc,
-        amount: Number(expAmount) || 0,
+        description: expDesc.trim(),
+        amount: Number(expAmount),
         category: expCategory,
-        date: editingExpense ? editingExpense.date : new Date().toISOString().split('T')[0],
+        date: expDate,
       }
 
       if (editingExpense) {
@@ -283,13 +320,22 @@ export default function ContabilidadPage() {
       }
       setExpenseOpen(false)
     } catch (err) {
-      console.error('Error saving expense:', err)
-      alert('Error al guardar el gasto.')
+      alertDbError(err, 'guardar el gasto')
+    } finally {
+      setSaving(false)
     }
   }
 
   // Delete Handlers
   const handleDeleteIncome = async (id: string) => {
+    const link = incomeLinks[id]
+    if (link) {
+      alert(
+        `Este ingreso viene de ${link.label}. Para quitarlo, abre la factura y márcala como pendiente ` +
+          '(así la factura y la contabilidad siguen cuadrando).'
+      )
+      return
+    }
     if (confirm('¿Estás seguro de que deseas eliminar este ingreso?')) {
       try {
         const { error } = await supabase
@@ -300,8 +346,7 @@ export default function ContabilidadPage() {
         if (error) throw error
         setIncomeList((prev) => prev.filter((i) => i.id !== id))
       } catch (err) {
-        console.error('Error deleting income:', err)
-        alert('Error al eliminar el ingreso.')
+        alertDbError(err, 'eliminar')
       }
     }
   }
@@ -317,8 +362,7 @@ export default function ContabilidadPage() {
         if (error) throw error
         setExpenseList((prev) => prev.filter((e) => e.id !== id))
       } catch (err) {
-        console.error('Error deleting expense:', err)
-        alert('Error al eliminar el gasto.')
+        alertDbError(err, 'eliminar')
       }
     }
   }
@@ -338,9 +382,19 @@ export default function ContabilidadPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Contabilidad</h1>
-          <p className="text-muted-foreground text-sm capitalize">
-            {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
-          </p>
+          <div className="flex gap-1 mt-1">
+            {years.map((y) => (
+              <button
+                key={y}
+                onClick={() => setYear(y)}
+                className={`text-xs px-2 py-0.5 rounded-md transition-colors ${
+                  y === year ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex gap-2">
           <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl" onClick={handleOpenAddIncome}>
@@ -360,7 +414,9 @@ export default function ContabilidadPage() {
         <Card className="border-emerald-200 bg-emerald-50/20 shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Ingresos (mes)</span>
+              <span className="text-sm text-muted-foreground capitalize">
+                Ingresos ({now.toLocaleDateString('es-ES', { month: 'long' })})
+              </span>
               <TrendingUp className="h-4 w-4 text-emerald-700" />
             </div>
             <div className="text-3xl font-bold text-emerald-700">{totalIncome.toFixed(2)}€</div>
@@ -369,7 +425,9 @@ export default function ContabilidadPage() {
         <Card className="border-destructive/20 bg-destructive/[0.02] shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Gastos (mes)</span>
+              <span className="text-sm text-muted-foreground capitalize">
+                Gastos ({now.toLocaleDateString('es-ES', { month: 'long' })})
+              </span>
               <TrendingDown className="h-4 w-4 text-destructive" />
             </div>
             <div className="text-3xl font-bold text-destructive">{totalExpenses.toFixed(2)}€</div>
@@ -378,7 +436,7 @@ export default function ContabilidadPage() {
         <Card className="border-primary/10 bg-primary/[0.02] shadow-sm">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Beneficio neto</span>
+              <span className="text-sm text-muted-foreground">Beneficio neto (mes)</span>
               <Wallet className="h-4 w-4 text-primary" />
             </div>
             <div className={`text-3xl font-bold ${profit >= 0 ? 'text-primary' : 'text-destructive'}`}>
@@ -395,24 +453,29 @@ export default function ContabilidadPage() {
           <CardHeader className="pb-3">
             <CardTitle className="font-display text-base font-semibold flex items-center gap-2 text-emerald-700">
               <TrendingUp className="h-4.5 w-4.5 text-emerald-700" />
-              Ingresos recientes
+              Ingresos {year}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 flex-1">
             <div className="divide-y max-h-[350px] overflow-y-auto">
-              {incomeList.map((item) => (
+              {yearIncome.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 p-3.5 text-xs group hover:bg-muted/10 transition-colors">
                   <div className="text-muted-foreground w-20 shrink-0">{formatDbToUiDate(item.date)}</div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate font-medium">{item.description}</p>
+                    {incomeLinks[item.id] && (
+                      <Link href={incomeLinks[item.id].href} className="text-[10px] text-primary hover:underline">
+                        {incomeLinks[item.id].label}
+                      </Link>
+                    )}
                   </div>
                   <Badge className={`text-[10px] py-0 px-1.5 font-normal shrink-0 ${methodColor[item.payment_method]}`} variant="outline">
                     {methodLabel[item.payment_method]}
                   </Badge>
                   <span className="font-semibold text-emerald-700 w-16 text-right shrink-0">+{Number(item.amount).toFixed(2)}€</span>
-                  
+
                   {/* Actions hover */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2 shrink-0">
+                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pl-2 shrink-0">
                     <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md" onClick={() => handleOpenEditIncome(item)}>
                       <Edit className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                     </Button>
@@ -422,8 +485,8 @@ export default function ContabilidadPage() {
                   </div>
                 </div>
               ))}
-              {incomeList.length === 0 && (
-                <p className="text-muted-foreground text-xs py-8 text-center">No hay ingresos registrados.</p>
+              {yearIncome.length === 0 && (
+                <p className="text-muted-foreground text-xs py-8 text-center">No hay ingresos en {year}.</p>
               )}
             </div>
           </CardContent>
@@ -434,12 +497,12 @@ export default function ContabilidadPage() {
           <CardHeader className="pb-3">
             <CardTitle className="font-display text-base font-semibold flex items-center gap-2 text-destructive">
               <TrendingDown className="h-4.5 w-4.5" />
-              Gastos recientes
+              Gastos {year}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 flex-1">
             <div className="divide-y max-h-[350px] overflow-y-auto">
-              {expenseList.map((item) => (
+              {yearExpenses.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 p-3.5 text-xs group hover:bg-muted/10 transition-colors">
                   <div className="text-muted-foreground w-20 shrink-0">{formatDbToUiDate(item.date)}</div>
                   <div className="flex-1 min-w-0">
@@ -447,9 +510,9 @@ export default function ContabilidadPage() {
                   </div>
                   <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal border-muted-foreground/20 text-muted-foreground shrink-0">{item.category}</Badge>
                   <span className="font-semibold text-destructive w-16 text-right shrink-0">-{Number(item.amount).toFixed(2)}€</span>
-                  
+
                   {/* Actions hover */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pl-2 shrink-0">
+                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pl-2 shrink-0">
                     <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md" onClick={() => handleOpenEditExpense(item)}>
                       <Edit className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                     </Button>
@@ -459,8 +522,8 @@ export default function ContabilidadPage() {
                   </div>
                 </div>
               ))}
-              {expenseList.length === 0 && (
-                <p className="text-muted-foreground text-xs py-8 text-center">No hay gastos registrados.</p>
+              {yearExpenses.length === 0 && (
+                <p className="text-muted-foreground text-xs py-8 text-center">No hay gastos en {year}.</p>
               )}
             </div>
           </CardContent>
@@ -470,7 +533,7 @@ export default function ContabilidadPage() {
       {/* Row 3: Annual Summary Chart */}
       <Card className="border border-border/60 shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="font-display text-base font-semibold">Resumen anual: Ingresos vs Gastos ({currentYear})</CardTitle>
+          <CardTitle className="font-display text-base font-semibold">Resumen anual: Ingresos vs Gastos ({year})</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={220}>
@@ -491,9 +554,9 @@ export default function ContabilidadPage() {
                   <div className="flex justify-center gap-4 text-[11px] mt-2">
                     {sortedPayload.map((entry: any, index: number) => (
                       <div key={`item-${index}`} className="flex items-center gap-1.5">
-                        <span 
-                          className="w-3 h-1.5 rounded-sm shrink-0" 
-                          style={{ backgroundColor: entry.color }} 
+                        <span
+                          className="w-3 h-1.5 rounded-sm shrink-0"
+                          style={{ backgroundColor: entry.color }}
                         />
                         <span className="text-muted-foreground font-medium">{entry.value}</span>
                       </div>
@@ -512,19 +575,19 @@ export default function ContabilidadPage() {
               <p className="text-xl font-bold text-emerald-700">
                 {totalAnnualIncome.toFixed(2)}€
               </p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Total ingresos ({currentYear})</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Total ingresos ({year})</p>
             </div>
             <div>
               <p className="text-xl font-bold text-destructive">
                 {totalAnnualExpenses.toFixed(2)}€
               </p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Total gastos ({currentYear})</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Total gastos ({year})</p>
             </div>
             <div>
               <p className="text-xl font-bold text-primary">
                 {annualProfit.toFixed(2)}€
               </p>
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Beneficio neto ({currentYear})</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Beneficio neto ({year})</p>
             </div>
           </div>
         </CardContent>
@@ -537,19 +600,36 @@ export default function ContabilidadPage() {
             <DialogTitle>{editingIncome ? 'Editar ingreso' : 'Registrar ingreso'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
+            {editingIncome && incomeLinks[editingIncome.id] && (
+              <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-2">
+                Este ingreso viene de {incomeLinks[editingIncome.id].label}. El importe se cambia editando la factura.
+              </p>
+            )}
             <div className="space-y-1.5">
               <Label>Descripción *</Label>
               <Input placeholder="Ej. Paseo de Koto" value={incDesc} onChange={(e) => setIncDesc(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label>Fecha *</Label>
+                <Input type="date" value={incDate} onChange={(e) => setIncDate(e.target.value)} />
+              </div>
               <div className="space-y-1.5">
                 <Label>Importe (€) *</Label>
-                <Input type="number" placeholder="0" value={incAmount} onChange={(e) => setIncAmount(e.target.value)} />
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0"
+                  value={incAmount}
+                  onChange={(e) => setIncAmount(e.target.value)}
+                  disabled={!!(editingIncome && incomeLinks[editingIncome.id])}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Método</Label>
-                <Select value={incMethod} onValueChange={(val) => setIncMethod(val || 'cash')}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select items={methodLabel} value={incMethod} onValueChange={(val) => setIncMethod(val || 'cash')}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="cash">Efectivo</SelectItem>
                     <SelectItem value="transfer">Transferencia</SelectItem>
@@ -560,7 +640,10 @@ export default function ContabilidadPage() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setIncomeOpen(false)}>Cancelar</Button>
-              <Button className="bg-emerald-700 hover:bg-emerald-800 text-white" onClick={handleSaveIncome}>Guardar</Button>
+              <Button className="bg-emerald-700 hover:bg-emerald-800 text-white" onClick={handleSaveIncome} disabled={saving}>
+                {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                Guardar
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -579,25 +662,31 @@ export default function ContabilidadPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Importe (€) *</Label>
-                <Input type="number" placeholder="0.00" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} />
+                <Label>Fecha *</Label>
+                <Input type="date" value={expDate} onChange={(e) => setExpDate(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label>Categoría</Label>
-                <Select value={expCategory} onValueChange={(val) => setExpCategory(val || 'Suministros')}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Suministros">Suministros</SelectItem>
-                    <SelectItem value="Equipo">Equipo</SelectItem>
-                    <SelectItem value="Transporte">Transporte</SelectItem>
-                    <SelectItem value="Formación">Formación</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Importe (€) *</Label>
+                <Input type="number" min="0" step="0.01" placeholder="0.00" value={expAmount} onChange={(e) => setExpAmount(e.target.value)} />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Categoría</Label>
+              <Select value={expCategory} onValueChange={(val) => setExpCategory(val || 'Suministros')}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[...new Set([...EXPENSE_CATEGORIES, expCategory])].map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setExpenseOpen(false)}>Cancelar</Button>
-              <Button variant="destructive" onClick={handleSaveExpense}>Guardar</Button>
+              <Button variant="destructive" onClick={handleSaveExpense} disabled={saving}>
+                {saving && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                Guardar
+              </Button>
             </div>
           </div>
         </DialogContent>

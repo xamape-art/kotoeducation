@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ArrowLeft, Download, Edit, Trash2, CheckCircle2, Undo2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ISSUER, formatEuro, formatDate, lineTotal } from '@/lib/invoice'
+import { alertDbError } from '@/lib/db-error'
+import { todayDb } from '@/lib/dates'
 import type { Invoice } from '@/types'
 
 const methodLabel: Record<string, string> = {
@@ -31,7 +33,7 @@ export default function FacturaDetailPage() {
   const [busy, setBusy] = useState(false)
 
   const [paidOpen, setPaidOpen] = useState(false)
-  const [paidDate, setPaidDate] = useState(new Date().toISOString().split('T')[0])
+  const [paidDate, setPaidDate] = useState(todayDb())
   const [paidMethod, setPaidMethod] = useState('transfer')
 
   useEffect(() => {
@@ -76,12 +78,15 @@ export default function FacturaDetailPage() {
         .update({ status: 'paid', paid_at: paidDate, payment_method: paidMethod, income_id: income[0].id })
         .eq('id', invoice.id)
         .select()
-      if (error) throw error
+      if (error) {
+        // Don't leave an income behind if the invoice couldn't be marked as paid
+        await supabase.from('income').delete().eq('id', income[0].id)
+        throw error
+      }
       setInvoice(data[0])
       setPaidOpen(false)
     } catch (err) {
-      console.error('Error marking invoice as paid:', err)
-      alert('Error al marcar la factura como cobrada.')
+      alertDbError(err, 'marcar la factura como cobrada')
     } finally {
       setBusy(false)
     }
@@ -104,8 +109,7 @@ export default function FacturaDetailPage() {
       if (error) throw error
       setInvoice(data[0])
     } catch (err) {
-      console.error('Error marking invoice as pending:', err)
-      alert('Error al actualizar la factura.')
+      alertDbError(err, 'actualizar la factura')
     } finally {
       setBusy(false)
     }
@@ -138,8 +142,7 @@ export default function FacturaDetailPage() {
       if (error) throw error
       router.push('/admin/facturas')
     } catch (err) {
-      console.error('Error deleting invoice:', err)
-      alert('Error al eliminar la factura.')
+      alertDbError(err, 'eliminar')
     }
   }
 
@@ -308,7 +311,7 @@ export default function FacturaDetailPage() {
             {invoice.status === 'paid' && invoice.payment_method && (
               <p>
                 Pagada el {invoice.paid_at && formatDate(invoice.paid_at)} mediante{' '}
-                {methodLabel[invoice.payment_method].toLowerCase()}.
+                {(methodLabel[invoice.payment_method] || invoice.payment_method).toLowerCase()}.
               </p>
             )}
             {invoice.notes && <p className="whitespace-pre-line">{invoice.notes}</p>}

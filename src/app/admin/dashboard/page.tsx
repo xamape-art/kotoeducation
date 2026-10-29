@@ -6,14 +6,13 @@ import { Badge } from '@/components/ui/badge'
 import {
   Users,
   TrendingUp,
-  MessageSquare,
   Euro,
   CheckCircle2,
-  Phone,
-  Mail,
   Loader2,
-  Eye,
   Plus,
+  CalendarDays,
+  FileText,
+  Clock,
 } from 'lucide-react'
 import {
   BarChart,
@@ -26,256 +25,107 @@ import {
 } from 'recharts'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-
-const statusColor: Record<string, string> = {
-  confirmed: 'bg-green-100 text-green-700',
-  pending: 'bg-yellow-100 text-yellow-700',
-  new: 'bg-blue-100 text-blue-700',
-  contacted: 'bg-amber-100 text-amber-700',
-  booked: 'bg-green-100 text-green-700',
-  closed: 'bg-gray-100 text-gray-700',
-}
-
-const reqStatusLabel: Record<string, string> = {
-  new: 'Nueva',
-  contacted: 'Contactado',
-  booked: 'Convertido',
-  closed: 'Cerrado',
-}
+import { alertDbError } from '@/lib/db-error'
+import { parseDbDate, todayDb } from '@/lib/dates'
+import { formatEuro, formatDate } from '@/lib/invoice'
+import { STATUS_LABELS, STATUS_BADGE } from '@/lib/appointments'
 
 const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 export default function DashboardPage() {
   const supabase = createClient()
-  const router = useRouter()
 
-  // Contact requests
-  const [requests, setRequests] = useState<any[]>([])
-  const [loadingRequests, setLoadingRequests] = useState(true)
-  const [selectedRequest, setSelectedRequest] = useState<any>(null)
-  const [openRequestModal, setOpenRequestModal] = useState(false)
-  const [creatingClient, setCreatingClient] = useState(false)
-
-  // Stats
-  const [loadingStats, setLoadingStats] = useState(true)
+  const [loading, setLoading] = useState(true)
   const [totalClients, setTotalClients] = useState(0)
   const [newClientsThisMonth, setNewClientsThisMonth] = useState(0)
   const [currentMonthIncome, setCurrentMonthIncome] = useState(0)
   const [prevMonthIncome, setPrevMonthIncome] = useState(0)
   const [revenueData, setRevenueData] = useState<{ month: string; ingresos: number }[]>([])
+  const [upcoming, setUpcoming] = useState<any[]>([])
+  const [pendingInvoices, setPendingInvoices] = useState<any[]>([])
 
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
 
-  // ─── Fetch Stats ────────────────────────────────────────────────────────────
-  const fetchStats = async () => {
+  // ─── Fetch ───────────────────────────────────────────────────────────────────
+  const fetchData = async () => {
     try {
-      setLoadingStats(true)
+      setLoading(true)
       const now = new Date()
       const currentYear = now.getFullYear()
       const currentMonth = now.getMonth() // 0-indexed
       const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
       const prevMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear
 
+      const [clientsRes, incomeRes, aptRes, invRes] = await Promise.all([
+        supabase.from('clients').select('id, created_at'),
+        supabase.from('income').select('amount, date').order('date', { ascending: true }),
+        supabase
+          .from('appointments')
+          .select('id, date, time, status, price, client_id, clients(name), pets(name), services(name)')
+          .gte('date', todayDb())
+          .in('status', ['pending', 'confirmed'])
+          .order('date')
+          .order('time')
+          .limit(8),
+        supabase
+          .from('invoices')
+          .select('id, number, date, client_name, total')
+          .eq('status', 'pending')
+          .order('date'),
+      ])
+      const firstError = [clientsRes, incomeRes, aptRes, invRes].find((r) => r.error)?.error
+      if (firstError) alertDbError(firstError, 'cargar el dashboard')
+
       // 1. Total clients & new this month
-      const { data: clientsData } = await supabase
-        .from('clients')
-        .select('id, created_at')
-
-      const allClients = clientsData || []
+      const allClients = clientsRes.data || []
       setTotalClients(allClients.length)
+      setNewClientsThisMonth(
+        allClients.filter((c) => {
+          const d = new Date(c.created_at)
+          return d.getFullYear() === currentYear && d.getMonth() === currentMonth
+        }).length
+      )
 
-      const newThisMonth = allClients.filter((c) => {
-        const d = new Date(c.created_at)
-        return d.getFullYear() === currentYear && d.getMonth() === currentMonth
-      }).length
-      setNewClientsThisMonth(newThisMonth)
+      // 2. Income per month
+      const income = incomeRes.data || []
+      const monthTotal = (y: number, m: number) =>
+        income
+          .filter((i) => {
+            const [iy, im] = (i.date || '').split('-').map(Number)
+            return iy === y && im - 1 === m
+          })
+          .reduce((sum, i) => sum + Number(i.amount), 0)
 
-      // 2. Income data from 'income' table
-      const { data: incomeData } = await supabase
-        .from('income')
-        .select('amount, date')
-        .order('date', { ascending: true })
-
-      const income = incomeData || []
-
-      // Current month income
-      const thisMonthInc = income
-        .filter((i) => {
-          const parts = i.date?.split('-')
-          if (!parts || parts.length < 2) return false
-          return parseInt(parts[0]) === currentYear && parseInt(parts[1]) - 1 === currentMonth
-        })
-        .reduce((sum, i) => sum + Number(i.amount), 0)
-      setCurrentMonthIncome(thisMonthInc)
-
-      // Previous month income
-      const prevMonthInc = income
-        .filter((i) => {
-          const parts = i.date?.split('-')
-          if (!parts || parts.length < 2) return false
-          return parseInt(parts[0]) === prevMonthYear && parseInt(parts[1]) - 1 === prevMonth
-        })
-        .reduce((sum, i) => sum + Number(i.amount), 0)
-      setPrevMonthIncome(prevMonthInc)
+      setCurrentMonthIncome(monthTotal(currentYear, currentMonth))
+      setPrevMonthIncome(monthTotal(prevMonthYear, prevMonth))
 
       // 3. Revenue chart — last 6 months
       const last6: { month: string; ingresos: number }[] = []
       for (let i = 5; i >= 0; i--) {
         const d = new Date(currentYear, currentMonth - i, 1)
-        const y = d.getFullYear()
-        const m = d.getMonth()
-        const monthInc = income
-          .filter((item) => {
-            const parts = item.date?.split('-')
-            if (!parts || parts.length < 2) return false
-            return parseInt(parts[0]) === y && parseInt(parts[1]) - 1 === m
-          })
-          .reduce((sum, item) => sum + Number(item.amount), 0)
-        last6.push({ month: MONTH_NAMES[m], ingresos: monthInc })
+        last6.push({ month: MONTH_NAMES[d.getMonth()], ingresos: monthTotal(d.getFullYear(), d.getMonth()) })
       }
       setRevenueData(last6)
-    } catch (err) {
-      console.error('Error fetching stats:', err)
-    } finally {
-      setLoadingStats(false)
-    }
-  }
 
-  // ─── Fetch Contact Requests ──────────────────────────────────────────────────
-  const fetchRequests = async () => {
-    try {
-      setLoadingRequests(true)
-      const { data, error } = await supabase
-        .from('contact_requests')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(4)
-
-      if (error) throw error
-      setRequests(data || [])
-    } catch (err) {
-      console.error('Error fetching requests:', err)
+      setUpcoming(aptRes.data || [])
+      setPendingInvoices(invRes.data || [])
     } finally {
-      setLoadingRequests(false)
+      setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchStats()
-    fetchRequests()
+    fetchData()
   }, [])
 
   // ─── Computed ────────────────────────────────────────────────────────────────
   const incomeChange = prevMonthIncome > 0
     ? Math.round(((currentMonthIncome - prevMonthIncome) / prevMonthIncome) * 100)
     : null
-
-  // ─── Handlers ────────────────────────────────────────────────────────────────
-  const handleOpenRequest = (req: any) => {
-    setSelectedRequest(req)
-    setOpenRequestModal(true)
-  }
-
-  const handleUpdateStatus = async (status: string) => {
-    if (!selectedRequest) return
-    try {
-      const { error } = await supabase
-        .from('contact_requests')
-        .update({ status })
-        .eq('id', selectedRequest.id)
-
-      if (error) throw error
-      setRequests((prev) =>
-        prev.map((r) => (r.id === selectedRequest.id ? { ...r, status } : r))
-      )
-      setSelectedRequest({ ...selectedRequest, status })
-    } catch (err) {
-      console.error('Error updating status:', err)
-      alert('Error al actualizar el estado.')
-    }
-  }
-
-  const handleCreateClientFromRequest = async () => {
-    if (!selectedRequest) return
-    try {
-      setCreatingClient(true)
-
-      const { data: clientData, error: clientErr } = await supabase
-        .from('clients')
-        .insert([
-          {
-            name: selectedRequest.name,
-            email: selectedRequest.email,
-            phone: selectedRequest.phone || null,
-            notes: selectedRequest.message || null,
-          },
-        ])
-        .select()
-        .single()
-
-      if (clientErr) throw clientErr
-
-      if (selectedRequest.pet_name && clientData) {
-        const { error: petErr } = await supabase
-          .from('pets')
-          .insert([
-            {
-              client_id: clientData.id,
-              name: selectedRequest.pet_name,
-              breed: selectedRequest.pet_breed || null,
-              weight_kg: selectedRequest.pet_weight ? Number(selectedRequest.pet_weight) : 0,
-              age_years: selectedRequest.pet_age ? Math.floor(Number(selectedRequest.pet_age)) : 0,
-              species: 'dog',
-            },
-          ])
-
-        if (petErr) throw petErr
-      }
-
-      await supabase
-        .from('contact_requests')
-        .update({ status: 'booked' })
-        .eq('id', selectedRequest.id)
-
-      setOpenRequestModal(false)
-      router.push(`/admin/clientes/${clientData.id}`)
-    } catch (err) {
-      console.error('Error creating client:', err)
-      alert('Error al crear la ficha del cliente.')
-    } finally {
-      setCreatingClient(false)
-    }
-  }
-
-  const handleDeleteRequest = async () => {
-    if (!selectedRequest) return
-    if (!confirm('¿Estás seguro de que deseas eliminar esta solicitud de contacto?')) return
-
-    try {
-      const { error } = await supabase
-        .from('contact_requests')
-        .delete()
-        .eq('id', selectedRequest.id)
-
-      if (error) throw error
-
-      setRequests((prev) => prev.filter((r) => r.id !== selectedRequest.id))
-      setOpenRequestModal(false)
-    } catch (err) {
-      console.error('Error deleting request:', err)
-      alert('Error al eliminar la solicitud.')
-    }
-  }
+  const totalPending = pendingInvoices.reduce((s, i) => s + Number(i.total), 0)
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -294,11 +144,11 @@ export default function DashboardPage() {
               <span className="text-sm text-muted-foreground">Ingresos del mes</span>
               <Euro className="h-4 w-4 text-primary" />
             </div>
-            {loadingStats ? (
+            {loading ? (
               <Loader2 className="h-6 w-6 animate-spin text-primary opacity-60" />
             ) : (
               <>
-                <div className="text-3xl font-bold">{currentMonthIncome.toFixed(0)}€</div>
+                <div className="text-3xl font-bold">{formatEuro(currentMonthIncome)}</div>
                 {incomeChange !== null ? (
                   <p className={`text-xs mt-1 ${incomeChange >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                     {incomeChange >= 0 ? '↑' : '↓'} {incomeChange >= 0 ? '+' : ''}{incomeChange}% vs mes anterior
@@ -311,14 +161,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Clientes activos */}
+        {/* Clientes */}
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">Clientes activos</span>
+              <span className="text-sm text-muted-foreground">Clientes</span>
               <Users className="h-4 w-4 text-primary" />
             </div>
-            {loadingStats ? (
+            {loading ? (
               <Loader2 className="h-6 w-6 animate-spin text-primary opacity-60" />
             ) : (
               <>
@@ -333,24 +183,105 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Solicitudes pendientes */}
+        {/* Pendiente de cobro */}
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">Solicitudes pendientes</span>
-              <MessageSquare className="h-4 w-4 text-primary" />
+              <span className="text-sm text-muted-foreground">Facturas pendientes de cobro</span>
+              <Clock className="h-4 w-4 text-amber-700" />
             </div>
-            {loadingRequests ? (
+            {loading ? (
               <Loader2 className="h-6 w-6 animate-spin text-primary opacity-60" />
             ) : (
               <>
-                <div className="text-3xl font-bold">
-                  {requests.filter((r) => r.status === 'new').length}
-                </div>
+                <div className="text-3xl font-bold text-amber-700">{formatEuro(totalPending)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {requests.length} solicitudes recientes
+                  {pendingInvoices.length} factura{pendingInvoices.length === 1 ? '' : 's'}
                 </p>
               </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Próximas citas */}
+        <Card className="border border-border/60 shadow-sm flex flex-col">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="flex items-center gap-2 font-display text-lg">
+              <CalendarDays className="h-4 w-4" />
+              Próximas citas
+            </CardTitle>
+            <Button asChild size="sm" variant="ghost" className="h-8">
+              <Link href="/admin/calendario">Ver calendario</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="flex-1">
+            {loading ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary opacity-60" />
+              </div>
+            ) : upcoming.length === 0 ? (
+              <p className="text-muted-foreground text-sm py-4 text-center">No hay citas próximas.</p>
+            ) : (
+              <div className="space-y-2">
+                {upcoming.map((apt) => (
+                  <div key={apt.id} className="flex items-center gap-3 text-xs p-3 rounded-xl border bg-muted/20">
+                    <div className="w-16 shrink-0 text-center">
+                      <p className="font-semibold text-sm capitalize">
+                        {parseDbDate(apt.date).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' })}
+                      </p>
+                      <p className="text-muted-foreground">{apt.time?.slice(0, 5)}</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{apt.pets?.name} · {apt.services?.name}</p>
+                      <Link href={`/admin/clientes/${apt.client_id}`} className="text-muted-foreground hover:underline">
+                        {apt.clients?.name}
+                      </Link>
+                    </div>
+                    <Badge variant="outline" className={`text-[10px] ${STATUS_BADGE[apt.status] || ''}`}>
+                      {STATUS_LABELS[apt.status] || apt.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Facturas pendientes */}
+        <Card className="border border-border/60 shadow-sm flex flex-col">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="flex items-center gap-2 font-display text-lg">
+              <FileText className="h-4 w-4" />
+              Facturas pendientes de cobro
+            </CardTitle>
+            <Button asChild size="sm" variant="ghost" className="h-8">
+              <Link href="/admin/facturas">Ver facturas</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="flex-1">
+            {loading ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary opacity-60" />
+              </div>
+            ) : pendingInvoices.length === 0 ? (
+              <p className="text-muted-foreground text-sm py-4 text-center">Todo cobrado. 🎉</p>
+            ) : (
+              <div className="space-y-2">
+                {pendingInvoices.slice(0, 8).map((inv) => (
+                  <Link
+                    key={inv.id}
+                    href={`/admin/facturas/${inv.id}`}
+                    className="flex items-center gap-3 text-xs p-3 rounded-xl border bg-muted/20 hover:bg-muted/40 transition-colors"
+                  >
+                    <span className="font-mono font-medium w-20 shrink-0">{inv.number}</span>
+                    <span className="flex-1 min-w-0 truncate">{inv.client_name}</span>
+                    <span className="text-muted-foreground hidden sm:block">{formatDate(inv.date)}</span>
+                    <span className="font-semibold">{formatEuro(inv.total)}</span>
+                  </Link>
+                ))}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -365,7 +296,7 @@ export default function DashboardPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loadingStats ? (
+          {loading ? (
             <div className="flex items-center justify-center h-[200px]">
               <Loader2 className="h-8 w-8 animate-spin text-primary opacity-60" />
             </div>
@@ -375,7 +306,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}€`} />
-                <Tooltip formatter={(v) => [`${v}€`, 'Ingresos']} />
+                <Tooltip formatter={(v) => [formatEuro(Number(v)), 'Ingresos']} />
                 <Bar dataKey="ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -383,302 +314,37 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Solicitudes de contacto & Acciones rápidas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Solicitudes de contacto */}
-        <Card className="border border-border/60 shadow-sm flex flex-col">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="flex items-center gap-2 font-display text-lg">
-              <MessageSquare className="h-4 w-4" />
-              Solicitudes de contacto
-            </CardTitle>
-            <Badge variant="secondary" className="bg-primary/10 text-primary border-none">
-              {requests.filter((r) => r.status === 'new').length} nuevas
-            </Badge>
-          </CardHeader>
-          <CardContent className="flex-1">
-            {loadingRequests ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary opacity-60" />
-                <p className="text-xs">Cargando solicitudes...</p>
-              </div>
-            ) : requests.length === 0 ? (
-              <p className="text-muted-foreground text-sm py-4 text-center">
-                No hay solicitudes de contacto.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {requests.map((req) => (
-                  <div
-                    key={req.id}
-                    className="flex items-center gap-3 text-xs p-3 rounded-xl border bg-muted/20"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="font-semibold text-sm truncate">{req.name}</p>
-                        {req.created_at && (
-                          <span className="text-[10px] text-muted-foreground shrink-0 font-normal">
-                            {new Date(req.created_at).toLocaleDateString('es-ES', {
-                              day: '2-digit',
-                              month: '2-digit',
-                            })}{' '}
-                            a las{' '}
-                            {new Date(req.created_at).toLocaleTimeString('es-ES', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-muted-foreground text-[11px] mt-0.5">
-                        {req.pet_name
-                          ? `${req.pet_name} (${req.pet_breed || 'Raza no indicada'})`
-                          : 'Sin mascota'}{' '}
-                        · <span className="capitalize">{req.service_type}</span>
-                      </p>
-                    </div>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColor[req.status]}`}
-                    >
-                      {reqStatusLabel[req.status] || req.status}
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 gap-1 rounded-lg"
-                      onClick={() => handleOpenRequest(req)}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      Ver
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Acciones rápidas */}
-        <Card className="border border-border/60 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 font-display text-lg">
-              <CheckCircle2 className="h-4 w-4" />
-              Acciones rápidas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground text-sm mb-4">
-              Accesos directos para la gestión del día a día:
-            </p>
-            <div className="grid grid-cols-2 gap-3">
+      {/* Acciones rápidas */}
+      <Card className="border border-border/60 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 font-display text-lg">
+            <CheckCircle2 className="h-4 w-4" />
+            Acciones rápidas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { href: '/admin/calendario', label: 'Nueva cita' },
+              { href: '/admin/clientes', label: 'Nuevo cliente' },
+              { href: '/admin/facturas/nueva', label: 'Nueva factura' },
+              { href: '/admin/contabilidad', label: 'Ingreso o gasto' },
+            ].map((a) => (
               <Button
+                key={a.href}
                 asChild
                 variant="outline"
                 className="justify-start h-11 border-primary/20 hover:bg-primary/[0.03] text-primary rounded-xl"
               >
-                <Link href="/admin/calendario">
+                <Link href={a.href}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Nueva cita
+                  {a.label}
                 </Link>
               </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="justify-start h-11 border-primary/20 hover:bg-primary/[0.03] text-primary rounded-xl"
-              >
-                <Link href="/admin/clientes">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuevo cliente
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="justify-start h-11 border-primary/20 hover:bg-primary/[0.03] text-primary rounded-xl col-span-2"
-              >
-                <Link href="/admin/contabilidad">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Registrar ingreso o gasto
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Modal detalle solicitud */}
-      <Dialog open={openRequestModal} onOpenChange={setOpenRequestModal}>
-        <DialogContent className="sm:!max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Detalles de la solicitud</DialogTitle>
-            {selectedRequest?.created_at && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Recibida el{' '}
-                {new Date(selectedRequest.created_at).toLocaleDateString('es-ES', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                })}{' '}
-                a las{' '}
-                {new Date(selectedRequest.created_at).toLocaleTimeString('es-ES', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
-            )}
-          </DialogHeader>
-          {selectedRequest && (
-            <div className="space-y-4 pt-2 text-sm">
-              {/* Cliente */}
-              <div className="border-b pb-3 space-y-2">
-                <p className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                  Datos del Cliente
-                </p>
-                <p className="text-base font-semibold">{selectedRequest.name}</p>
-                <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-3.5 w-3.5 shrink-0" />
-                    <a href={`mailto:${selectedRequest.email}`} className="hover:underline">
-                      {selectedRequest.email}
-                    </a>
-                  </div>
-                  {selectedRequest.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5 shrink-0" />
-                      <a href={`tel:${selectedRequest.phone}`} className="hover:underline">
-                        {selectedRequest.phone}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Mascota y Servicio */}
-              <div className="border-b pb-3 space-y-3">
-                <p className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                  Mascota y Servicio
-                </p>
-                <div className="grid grid-cols-2 gap-3 text-xs bg-muted/40 p-3 rounded-xl">
-                  <div>
-                    <span className="text-muted-foreground block text-[10px] uppercase">Mascota</span>
-                    <span className="font-semibold text-sm">
-                      {selectedRequest.pet_name || 'No indicado'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-[10px] uppercase">Raza</span>
-                    <span className="font-semibold text-sm">
-                      {selectedRequest.pet_breed || 'No indicada'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-[10px] uppercase">Peso</span>
-                    <span className="font-semibold text-sm">
-                      {selectedRequest.pet_weight
-                        ? `${selectedRequest.pet_weight} kg`
-                        : 'No indicado'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-[10px] uppercase">Edad</span>
-                    <span className="font-semibold text-sm">
-                      {selectedRequest.pet_age
-                        ? `${selectedRequest.pet_age} años`
-                        : 'No indicada'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-[10px] uppercase">Servicio</span>
-                    <span className="font-semibold text-sm capitalize">
-                      {selectedRequest.service_type}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-[10px] uppercase">
-                      Fecha preferida
-                    </span>
-                    <span className="font-semibold text-sm">
-                      {selectedRequest.preferred_date
-                        ? new Date(selectedRequest.preferred_date).toLocaleDateString('es-ES')
-                        : 'No indicada'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Mensaje */}
-              <div className="space-y-1.5">
-                <p className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
-                  Mensaje
-                </p>
-                <p className="text-muted-foreground bg-muted/20 p-3 rounded-xl italic">
-                  &quot;{selectedRequest.message || 'Sin mensaje adicional.'}&quot;
-                </p>
-              </div>
-
-              {/* Footer */}
-              <div className="flex flex-col gap-2 pt-3 border-t">
-                <div className="flex justify-between items-center text-xs text-muted-foreground">
-                  <span>Estado actual:</span>
-                  <Badge
-                    variant="outline"
-                    className={`capitalize ${statusColor[selectedRequest.status]}`}
-                  >
-                    {reqStatusLabel[selectedRequest.status] || selectedRequest.status}
-                  </Badge>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:justify-between gap-2 mt-3">
-                  <div className="flex gap-2 justify-center sm:justify-start">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setOpenRequestModal(false)}
-                    >
-                      Cerrar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleDeleteRequest}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    {selectedRequest.status === 'new' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleUpdateStatus('contacted')}
-                      >
-                        Marcar como contactado
-                      </Button>
-                    )}
-                    {selectedRequest.status !== 'booked' && (
-                      <Button
-                        size="sm"
-                        onClick={handleCreateClientFromRequest}
-                        disabled={creatingClient}
-                      >
-                        {creatingClient ? (
-                          <>
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                            Creando...
-                          </>
-                        ) : (
-                          'Crear ficha de cliente'
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
