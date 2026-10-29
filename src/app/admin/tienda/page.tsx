@@ -342,7 +342,7 @@ export default function TiendaAdminPage() {
 
       {/* Product dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:!max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:!max-w-lg">
           <DialogHeader>
             <DialogTitle>{editing ? `Editar ${editing.name}` : 'Nuevo producto'}</DialogTitle>
           </DialogHeader>

@@ -718,7 +718,7 @@ export default function CalendarioPage() {
 
       {/* Add / edit dialog */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Editar cita' : 'Nueva cita'}</DialogTitle>
           </DialogHeader>

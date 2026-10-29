@@ -164,7 +164,7 @@ export default function PedidosPage() {
 
       {/* Order detail */}
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="sm:!max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:!max-w-lg">
           {selected && (
             <>
               <DialogHeader>

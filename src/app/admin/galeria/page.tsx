@@ -216,7 +216,6 @@ export default function GaleriaAdminPage() {
 
   // ─── Delete ──────────────────────────────────────────────────────────────────
   const deletePhoto = async (photo: any) => {
-    if (!confirm('¿Eliminar esta foto? No se puede deshacer.')) return
     try {
       const { error } = await supabase
         .from('gallery_photos')

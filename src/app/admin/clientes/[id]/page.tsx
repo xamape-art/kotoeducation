@@ -653,7 +653,7 @@ export default function ClientDetailPage() {
 
       {/* Pet Dialog (Add/Edit) */}
       <Dialog open={openPetDialog} onOpenChange={setOpenPetDialog}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editingPet ? 'Editar mascota' : 'Añadir mascota'}</DialogTitle>
           </DialogHeader>
