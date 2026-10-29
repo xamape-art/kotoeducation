@@ -30,7 +30,7 @@ export default async function GaleriaPage({
   // Fetch public photos from Supabase (server-side)
   const supabase = await createClient()
   const query = supabase
-    .from('photos')
+    .from('gallery_photos')
     .select('id, url, caption, category, is_public')
     .eq('is_public', true)
     .order('created_at', { ascending: false })
@@ -43,7 +43,7 @@ export default async function GaleriaPage({
 
   // Compute which categories actually have photos (for filter buttons)
   const { data: allPhotos = [] } = await supabase
-    .from('photos')
+    .from('gallery_photos')
     .select('category')
     .eq('is_public', true)
 

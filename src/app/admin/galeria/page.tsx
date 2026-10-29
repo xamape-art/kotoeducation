@@ -71,7 +71,7 @@ export default function GaleriaAdminPage() {
   const fetchPhotos = async () => {
     setLoading(true)
     const { data, error } = await supabase
-      .from('photos')
+      .from('gallery_photos')
       .select('*')
       .order('created_at', { ascending: false })
 
@@ -129,11 +129,12 @@ export default function GaleriaAdminPage() {
 
       const publicUrl = urlData.publicUrl
 
-      // 3. Insert into photos table
+      // 3. Insert into gallery_photos table
       const { data, error: dbErr } = await supabase
-        .from('photos')
+        .from('gallery_photos')
         .insert([
           {
+            storage_path: filename,
             url: publicUrl,
             caption: uploadCaption || null,
             category: uploadCategory,
@@ -162,7 +163,7 @@ export default function GaleriaAdminPage() {
   const togglePublic = async (photo: any) => {
     try {
       const { data, error } = await supabase
-        .from('photos')
+        .from('gallery_photos')
         .update({ is_public: !photo.is_public })
         .eq('id', photo.id)
         .select()
@@ -191,7 +192,7 @@ export default function GaleriaAdminPage() {
     setEditSaving(true)
     try {
       const { data, error } = await supabase
-        .from('photos')
+        .from('gallery_photos')
         .update({
           caption: editCaption || null,
           category: editCategory,
@@ -227,7 +228,7 @@ export default function GaleriaAdminPage() {
       }
 
       const { error } = await supabase
-        .from('photos')
+        .from('gallery_photos')
         .delete()
         .eq('id', photo.id)
 

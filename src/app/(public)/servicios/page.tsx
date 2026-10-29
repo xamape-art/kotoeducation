@@ -9,19 +9,21 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { WHATSAPP_HREF } from '@/lib/contact'
+import { getPublicServices, categoryPrice, formatPrice } from '@/lib/services-public'
 
 export const metadata = {
   title: 'Servicios y Tarifas | Koto Education',
-  description: 'Paseo de perros 10€, visitas a domicilio 10€, cuidado a domicilio 35€/noche. Servicios de cuidado de mascotas en Terrassa.',
+  description: 'Paseo de perros, visitas a domicilio, cuidado a domicilio y educación canina. Servicios de cuidado de mascotas en Terrassa.',
 }
 
+// Texts for each category; prices and the list of rates come from the admin "Tarifas" page
 const services = [
   {
     id: 'paseo',
+    category: 'walk',
     icon: Dog,
     title: 'Paseo de perros',
     emoji: '🦮',
-    price: '10€',
     unit: 'por paseo',
     description:
       'Paseo por el barrio adaptado a las necesidades de tu perro. Puedo hacerlo en grupo (máx. 3) o individual para perros que lo necesiten.',
@@ -32,16 +34,15 @@ const services = [
       'Recogida y entrega a domicilio',
       'Agua y descansos necesarios',
     ],
-    extras: ['Paseo 60 min: +3€', 'Paseo individual: +5€'],
     bgColor: 'bg-green-50',
     borderColor: 'border-green-200',
   },
   {
     id: 'visita',
+    category: 'visit',
     icon: Home,
     title: 'Visitas a domicilio',
     emoji: '🏠',
-    price: '10€',
     unit: 'por visita',
     description:
       'Me desplazo a tu casa para dar de comer, hacer compañía, jugar o administrar medicación. Ideal para gatos y perros que se quedan solos durante el día.',
@@ -52,16 +53,15 @@ const services = [
       'Administración de medicamentos (orales)',
       'Foto e informe al terminar',
     ],
-    extras: ['Visita de 1 hora: +5€'],
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
   },
   {
     id: 'cuidado',
+    category: 'care',
     icon: Heart,
     title: 'Cuidado a domicilio',
     emoji: '🛏️',
-    price: '35€',
     unit: 'por noche',
     description:
       'Me quedo en tu casa para que tu mascota esté en su entorno habitual. Ideal para períodos de vacaciones o ausencias largas.',
@@ -72,16 +72,15 @@ const services = [
       'Actualizaciones diarias con fotos',
       'Administración de medicamentos',
     ],
-    extras: ['Día completo (sin noche): 20€', 'Mascotas adicionales: +10€'],
     bgColor: 'bg-orange-50',
     borderColor: 'border-orange-200',
   },
   {
     id: 'educacion',
+    category: 'training',
     icon: GraduationCap,
     title: 'Educación canina',
     emoji: '🎓',
-    price: 'Próximamente',
     unit: '',
     description:
       'Actualmente en formación como educadora canina. Pronto ofreceré sesiones de adiestramiento básico, trabajo con perros reactivos y socialización.',
@@ -91,7 +90,6 @@ const services = [
       'Socialización',
       'Sesiones individualizadas',
     ],
-    extras: [],
     bgColor: 'bg-purple-50',
     borderColor: 'border-purple-200',
   },
@@ -120,7 +118,31 @@ const faqs = [
   },
 ]
 
-export default function ServiciosPage() {
+export default async function ServiciosPage() {
+  const rates = await getPublicServices()
+
+  // Categories created in the admin panel that have no texts here
+  const knownCategories = services.map((s) => s.category)
+  const otherCategories = [...new Set(rates.map((r) => r.category))].filter(
+    (c) => !knownCategories.includes(c) && categoryPrice(rates, c)
+  )
+
+  const cards = [
+    ...services,
+    ...otherCategories.map((category) => ({
+      id: category.toLowerCase().replace(/\s+/g, '-'),
+      category,
+      icon: CheckCircle2,
+      title: category,
+      emoji: '',
+      unit: '',
+      description: '',
+      includes: [] as string[],
+      bgColor: 'bg-gray-50',
+      borderColor: 'border-gray-200',
+    })),
+  ]
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-16">
       <div className="text-center mb-16">
@@ -134,7 +156,10 @@ export default function ServiciosPage() {
 
       {/* Service cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-20">
-        {services.map((s) => (
+        {cards.map((s) => {
+          const headline = categoryPrice(rates, s.category)
+          const categoryRates = headline ? rates.filter((r) => r.category === s.category) : []
+          return (
           <Card key={s.id} id={s.id} className={`border-2 ${s.bgColor} ${s.borderColor}`}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
@@ -145,32 +170,50 @@ export default function ServiciosPage() {
                   <CardTitle className="font-display text-lg font-semibold">{s.title}</CardTitle>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-primary">{s.price}</div>
-                  {s.unit && (
+                  {headline?.from && (
+                    <div className="text-xs text-muted-foreground">desde</div>
+                  )}
+                  <div className="text-2xl font-bold text-primary">
+                    {headline ? headline.price : 'Próximamente'}
+                  </div>
+                  {headline && !headline.from && s.unit && (
                     <div className="text-xs text-muted-foreground">{s.unit}</div>
                   )}
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground text-sm mb-4">{s.description}</p>
-              <h4 className="font-semibold text-sm mb-2">Incluye:</h4>
-              <ul className="space-y-1.5 mb-4">
-                {s.includes.map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-              {s.extras.length > 0 && (
+              {s.description && (
+                <p className="text-muted-foreground text-sm mb-4">{s.description}</p>
+              )}
+              {s.includes.length > 0 && (
                 <>
-                  <h4 className="font-semibold text-sm mb-2">Extras opcionales:</h4>
-                  <ul className="space-y-1">
-                    {s.extras.map((e) => (
-                      <li key={e} className="text-xs text-muted-foreground flex items-center gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-muted-foreground" />
-                        {e}
+                  <h4 className="font-semibold text-sm mb-2">Incluye:</h4>
+                  <ul className="space-y-1.5 mb-4">
+                    {s.includes.map((item) => (
+                      <li key={item} className="flex items-start gap-2 text-sm">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {categoryRates.length > 0 && (
+                <>
+                  <h4 className="font-semibold text-sm mb-2">Tarifas:</h4>
+                  <ul className="space-y-1.5">
+                    {categoryRates.map((r) => (
+                      <li key={r.id} className="text-sm">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span>{r.name}</span>
+                          <span className="font-semibold text-primary whitespace-nowrap">
+                            {Number(r.price) > 0 ? formatPrice(r.price) : 'Consultar'}
+                          </span>
+                        </div>
+                        {r.description && (
+                          <p className="text-xs text-muted-foreground">{r.description}</p>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -178,7 +221,8 @@ export default function ServiciosPage() {
               )}
             </CardContent>
           </Card>
-        ))}
+          )
+        })}
       </div>
 
       {/* Availability */}

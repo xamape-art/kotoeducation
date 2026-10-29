@@ -17,12 +17,13 @@ import {
 } from 'lucide-react'
 import { WHATSAPP_HREF, PHONE_HREF, PHONE_DISPLAY } from '@/lib/contact'
 import { reviews, REVIEWS_RATING, REVIEWS_COUNT, type Review } from '@/lib/reviews'
+import { getPublicServices, categoryPrice } from '@/lib/services-public'
 
 const services = [
   {
     icon: Dog,
     title: 'Paseo de perros',
-    price: '10€',
+    category: 'walk',
     unit: 'por paseo',
     description: 'Paseos en grupo o individuales por el barrio. Duración 30–60 min.',
     accent: 'border-l-primary',
@@ -30,7 +31,7 @@ const services = [
   {
     icon: Home,
     title: 'Visitas a domicilio',
-    price: '10€',
+    category: 'visit',
     unit: 'por visita',
     description: 'Me desplazo a tu casa para cuidar, alimentar y hacer compañía a tu mascota.',
     accent: 'border-l-accent',
@@ -38,7 +39,7 @@ const services = [
   {
     icon: Heart,
     title: 'Cuidado a domicilio',
-    price: '35€',
+    category: 'care',
     unit: 'por noche',
     description: 'Me quedo en tu casa para que tu mascota no sufra el estrés de una guardería.',
     accent: 'border-l-primary',
@@ -52,7 +53,10 @@ const stats = [
   { value: '7/7', label: 'Días disponible' },
 ]
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Prices come from the admin "Tarifas" page
+  const rates = await getPublicServices()
+
   return (
     <>
       {/* ── Hero ── */}
@@ -171,7 +175,9 @@ export default function HomePage() {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {services.map((service) => (
+            {services.map((service) => {
+              const headline = categoryPrice(rates, service.category)
+              return (
               <Card
                 key={service.title}
                 className={`border border-border border-l-4 ${service.accent} shadow-sm hover:shadow-md transition-shadow`}
@@ -182,17 +188,25 @@ export default function HomePage() {
                   </div>
                   <h3 className="font-bold text-lg mb-1 text-foreground">{service.title}</h3>
                   <div className="text-3xl font-display font-bold text-primary mb-1">
-                    {service.price}
-                    <span className="text-sm font-sans font-normal text-muted-foreground ml-1">
-                      {service.unit}
-                    </span>
+                    {headline?.from && (
+                      <span className="text-sm font-sans font-normal text-muted-foreground mr-1">
+                        desde
+                      </span>
+                    )}
+                    {headline ? headline.price : 'Próximamente'}
+                    {headline && !headline.from && (
+                      <span className="text-sm font-sans font-normal text-muted-foreground ml-1">
+                        {service.unit}
+                      </span>
+                    )}
                   </div>
                   <p className="text-muted-foreground text-sm leading-relaxed mt-3">
                     {service.description}
                   </p>
                 </CardContent>
               </Card>
-            ))}
+              )
+            })}
           </div>
           <div className="text-center mt-10">
             <Button asChild variant="outline" className="rounded-full px-8">
