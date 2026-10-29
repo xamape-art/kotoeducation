@@ -6,18 +6,33 @@ export function escapeHtml(text: string) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
+type Attachment = { filename: string; content: Buffer | string; contentType?: string }
+
+// Returns whether the email was sent
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  attachments,
+}: {
+  to: string
+  subject: string
+  html: string
+  attachments?: Attachment[]
+}) {
   const user = process.env.GMAIL_USER
   const pass = process.env.GMAIL_APP_PASSWORD
   if (!user || !pass) {
     console.warn('Gmail SMTP credentials are not defined; email not sent:', subject)
-    return
+    return false
   }
   try {
     const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user, pass } })
-    await transporter.sendMail({ from: `"Koto Education" <${user}>`, to, subject, html })
+    await transporter.sendMail({ from: `"Koto Education" <${user}>`, to, subject, html, attachments })
+    return true
   } catch (err) {
     console.error('Failed to send email:', subject, err)
+    return false
   }
 }
 

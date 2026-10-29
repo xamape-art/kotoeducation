@@ -1,12 +1,14 @@
-// Restores a daily backup folder (one JSON file per table, downloaded from Drive) into Supabase.
+// Restores a backup into Supabase. Accepts either:
+//   - the copia-AAAA-MM-DD.json file from the nightly email or the "Copia" button, or
+//   - a daily folder from Google Drive (one JSON file per table).
 //
-//   node scripts/backup/restaurar.mjs <carpeta-de-la-copia>              -> only shows what it would do
-//   node scripts/backup/restaurar.mjs <carpeta-de-la-copia> --confirmar  -> writes to the database
+//   node scripts/backup/restaurar.mjs <archivo.json | carpeta>              -> only shows what it would do
+//   node scripts/backup/restaurar.mjs <archivo.json | carpeta> --confirmar  -> writes to the database
 //
 // Rows are inserted or updated by id ("upsert"); rows that exist now but not in the backup are left alone.
 // Needs NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local.
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 // Parents before children, so foreign keys are satisfied
@@ -17,12 +19,27 @@ const ORDER = [
 // Columns the database generates itself and won't accept on insert/update
 const GENERATED = { orders: ['number'] }
 
-const [dir, flag] = process.argv.slice(2)
-if (!dir || !existsSync(dir)) {
-  console.error('Uso: node scripts/backup/restaurar.mjs <carpeta-de-la-copia> [--confirmar]')
+const [source, flag] = process.argv.slice(2)
+if (!source || !existsSync(source)) {
+  console.error('Uso: node scripts/backup/restaurar.mjs <archivo.json | carpeta> [--confirmar]')
   process.exit(1)
 }
 const write = flag === '--confirmar'
+
+// { table: rows[] } from either backup format
+function loadBackup(path) {
+  if (statSync(path).isDirectory()) {
+    return Object.fromEntries(
+      readdirSync(path)
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => [f.slice(0, -5), JSON.parse(readFileSync(join(path, f), 'utf8'))])
+    )
+  }
+  const parsed = JSON.parse(readFileSync(path, 'utf8'))
+  if (!parsed.tables) throw new Error('El archivo no parece una copia de Koto Education (falta "tables").')
+  console.log(`Copia del ${parsed.date}`)
+  return parsed.tables
+}
 
 const env = Object.fromEntries(
   readFileSync('.env.local', 'utf8')
@@ -32,12 +49,13 @@ const env = Object.fromEntries(
 )
 const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
 
-const files = readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5))
-const tables = [...ORDER.filter((t) => files.includes(t)), ...files.filter((t) => !ORDER.includes(t))]
+const backup = loadBackup(source)
+const names = Object.keys(backup)
+const tables = [...ORDER.filter((t) => names.includes(t)), ...names.filter((t) => !ORDER.includes(t))]
 
 console.log(write ? 'Restaurando en la base de datos...' : 'Simulación (añade --confirmar para escribir):')
 for (const table of tables) {
-  const rows = JSON.parse(readFileSync(join(dir, table + '.json'), 'utf8')).map((row) => {
+  const rows = backup[table].map((row) => {
     const copy = { ...row }
     for (const col of GENERATED[table] || []) delete copy[col]
     return copy
@@ -55,6 +73,6 @@ for (const table of tables) {
   }
   console.log(`  ${table}: ${rows.length} filas restauradas`)
 }
-if (files.includes('orders')) {
+if (names.includes('orders')) {
   console.log('\nNota: los pedidos que no existan ahora recibirán un número de pedido nuevo (lo genera la base de datos).')
 }

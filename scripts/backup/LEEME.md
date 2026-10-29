@@ -1,64 +1,74 @@
-# Copias de seguridad en Google Drive
+# Copias de seguridad
 
-Cada noche, a las 3:00, se guarda en Google Drive una copia completa de la base de datos de Koto Education. Incluye clientes, mascotas, citas, agenda, tarifas, facturas, contabilidad, tienda y pedidos, y también las fotos.
+Koto Education tiene tres copias de seguridad que se complementan:
 
-## Qué se guarda y dónde
+| | Qué guarda | Cuándo | Dónde |
+|---|---|---|---|
+| **1. Supabase Pro** | Toda la base de datos | Cada día, automático | En Supabase (últimos 7 días) |
+| **2. Correo nocturno** | Todos los datos en Excel + archivo para restaurar | Cada noche, automático | Gmail de kotoeducation@gmail.com |
+| **3. Botón "Copia"** | Todos los datos en Excel | Cuando queráis | Se descarga en vuestro ordenador |
 
-En el Drive de **kotoeducation@gmail.com** se crea la carpeta **Koto Education - Copias de seguridad**:
+> ⚠️ Las copias contienen datos personales de los clientes: nombres, teléfonos, direcciones y NIF. No reenviéis los correos de copia ni compartáis los archivos.
 
-| Qué | Para qué |
-|---|---|
-| `2026-10-30/` (una carpeta por día) | Un archivo `.json` por tabla y un `_resumen.txt` con cuántos registros hay. Es lo que se usa para restaurar. |
-| `Copia 2026-10-30 (hoja)` | Los mismos datos en una hoja de cálculo, con una pestaña por tabla, para consultarlos a mano. |
-| `Fotos/` | Las fotos de la galería y de las mascotas. Cada foto se copia una sola vez. |
+## 1. Copias automáticas de Supabase (ya activas)
 
-Se guardan las copias de los **últimos 30 días** y, para siempre, la del **día 1 de cada mes**. Las demás van a la papelera de Drive.
+Con el plan Pro, Supabase hace una copia diaria de la base de datos y guarda los últimos 7 días. No hay que hacer nada.
 
-> ⚠️ Esta carpeta contiene datos personales de los clientes: nombres, teléfonos, direcciones y NIF. **No la compartáis con nadie.**
+**Para restaurar:** en [supabase.com/dashboard](https://supabase.com/dashboard), entrad en el proyecto → **Database** → **Backups**, elegid el día y pulsad **Restore**. El proyecto vuelve al estado de ese día: **se pierde todo lo que se hizo después**, así que usadlo solo si se ha perdido algo importante.
 
-## Instalación (una sola vez, unos 10 minutos)
+Estas copias **no incluyen las fotos** (galería y mascotas). Mirad el apartado "Fotos" más abajo.
 
-Hacedlo con la cuenta **kotoeducation@gmail.com**, porque las copias se guardan en el Drive de quien instala el script.
+## 2. Copia diaria por correo
 
-1. Entrad en **https://script.google.com** y pulsad **Nuevo proyecto**.
-2. Arriba a la izquierda, cambiad el nombre "Proyecto sin título" por **Copia de seguridad Koto**.
-3. Borrad todo lo que haya en el editor y pegad el contenido completo de `scripts/backup/copia-seguridad-drive.gs`. Pulsad el icono de guardar 💾.
-4. En el menú de la izquierda, entrad en **Configuración del proyecto** (⚙️). Al final de la página, en **Propiedades del script**, pulsad **Añadir propiedad del script** y cread estas dos:
-   - `SUPABASE_URL`: el valor de `NEXT_PUBLIC_SUPABASE_URL` del archivo `.env.local`.
-   - `SUPABASE_SERVICE_ROLE_KEY`: el valor de `SUPABASE_SERVICE_ROLE_KEY` del mismo archivo.
+Cada noche, hacia las 3:00 o 4:00 (hora de España), la web envía a **kotoeducation@gmail.com** un correo titulado "Copia de seguridad Koto Education · fecha" con dos archivos:
 
-   También están en Supabase, en **Project Settings → API**. Pulsad **Guardar propiedades del script**.
-5. Volved al **Editor** (`< >`). En el desplegable de funciones de la barra de arriba, elegid **instalar** y pulsad **Ejecutar**.
-6. Google pedirá permisos. Pulsad **Revisar permisos**, elegid la cuenta y, si sale "Google no ha verificado esta aplicación", pulsad **Configuración avanzada → Ir a Copia de seguridad Koto** y después **Permitir**. Es normal: el script es vuestro y solo accede a vuestro Drive y a Supabase.
-7. Esperad a que el registro de abajo diga "Copia ... hecha". Abrid Drive y comprobad que existe la carpeta **Koto Education - Copias de seguridad**.
+- `copia-AAAA-MM-DD.xlsx`: todos los datos en Excel, con una hoja por apartado (Clientes, Mascotas, Citas, Agenda, Tarifas, Facturas, Ingresos, Gastos...). Se abre con Excel o con Google Sheets.
+- `copia-AAAA-MM-DD.json`: el mismo contenido, para restaurar la base de datos si hiciera falta.
 
-A partir de ahí se ejecuta sola cada noche.
+Consejo: en Gmail, cread un filtro para que estos correos vayan a una etiqueta "Copias" y no llenen la bandeja de entrada.
 
-### Para enteraros si algún día falla
+### Activarlo (una sola vez)
 
-En el menú de la izquierda, entrad en **Activadores** (⏰), pulsad los tres puntos del activador `copiaDeSeguridad` → **Editar** y, en **Configuración de notificación de errores**, elegid **Notificarme inmediatamente**. Si una copia falla, llegará un correo a kotoeducation@gmail.com.
+En [vercel.com](https://vercel.com), entrad en el proyecto **kotoeducation** → **Settings** → **Environment Variables**:
 
-## Hacer una copia en cualquier momento
+1. Añadid **`CRON_SECRET`** con una clave larga e inventada (por ejemplo, 40 letras y números al azar). Sirve para que solo Vercel pueda pedir la copia.
+2. Comprobad que existen **`GMAIL_USER`** y **`GMAIL_APP_PASSWORD`**. Son los mismos que usa la tienda para enviar correos. Si no están, copiadlos del archivo `.env.local`.
+3. Comprobad que existe **`SUPABASE_SERVICE_ROLE_KEY`**.
+4. Volved a publicar la web (**Deployments** → los tres puntos del último → **Redeploy**) para que lea las variables nuevas.
 
-En script.google.com, abrid el proyecto, elegid **copiaDeSeguridad** en el desplegable y pulsad **Ejecutar**. Si ya había una copia de ese día, se sustituye.
+Para comprobar que funciona sin esperar a la noche: **Settings** → **Cron Jobs** → en `/api/backup/cron`, pulsad **Run**. Debería llegar el correo en un minuto.
 
-## Restaurar una copia
+## 3. Botón "Copia" del panel
 
-Esto solo hace falta si se pierden o se estropean datos. Lo hace alguien con el proyecto descargado en su ordenador.
+En la barra de arriba del panel, junto a "Contraseña" y "Salir", el botón **Copia** descarga al momento un Excel con todos los datos. Es útil antes de presentar el IVA, al cerrar el año o antes de un cambio grande. Solo funciona con sesión de administrador.
 
-1. En Drive, descargad la carpeta del día que queráis recuperar (por ejemplo `2026-10-30`) y descomprimidla.
-2. Desde la carpeta del proyecto, ejecutad primero la simulación, que no escribe nada:
+## Restaurar desde un archivo de copia
+
+Si solo hay que recuperar unos pocos datos, lo más fácil es abrir el Excel y copiarlos a mano en el panel.
+
+Para restaurar todo desde el archivo `.json` del correo, lo hace alguien con el proyecto descargado en su ordenador:
+
+1. Simulación (no escribe nada, solo muestra cuántos registros hay):
    ```
-   node scripts/backup/restaurar.mjs "C:\ruta\a\2026-10-30"
+   node scripts/backup/restaurar.mjs "C:\ruta\a\copia-2026-10-30.json"
    ```
-   Muestra cuántos registros hay de cada tabla.
-3. Si todo cuadra, restaurad de verdad:
+2. Restauración de verdad:
    ```
-   node scripts/backup/restaurar.mjs "C:\ruta\a\2026-10-30" --confirmar
+   node scripts/backup/restaurar.mjs "C:\ruta\a\copia-2026-10-30.json" --confirmar
    ```
 
-La restauración **recupera o sobrescribe** los registros que hay en la copia, pero **no borra** los que se hayan creado después. Las fotos se recuperan aparte, desde la carpeta `Fotos/` de Drive.
+La restauración **recupera o sobrescribe** los registros que hay en la copia, pero **no borra** los que se hayan creado después.
+
+## Fotos (opcional)
+
+Las fotos están guardadas en Supabase Storage, pero ninguna de las copias anteriores las incluye. Si queréis una copia de las fotos en Google Drive, existe el script `copia-seguridad-drive.gs` (Google Apps Script). Se instala una vez desde la cuenta de Google, en script.google.com:
+
+1. Nuevo proyecto → pegad el contenido de `copia-seguridad-drive.gs` → guardad.
+2. **Configuración del proyecto** → **Propiedades del script** → añadid `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (los valores de `.env.local`).
+3. En el editor, elegid la función **instalar** → **Ejecutar** → aceptad los permisos. Si sale "Google no ha verificado esta aplicación", pulsad **Configuración avanzada** → **Ir a...** → **Permitir**.
+
+Cada noche copia las fotos nuevas en la carpeta **Koto Education - Copias de seguridad/Fotos** de Drive y, de paso, guarda también una copia de los datos.
 
 ## Seguridad de la clave
 
-`SUPABASE_SERVICE_ROLE_KEY` es la llave maestra de la base de datos. Solo debe estar en las propiedades del script, nunca pegada en el código ni en un documento compartido. Si alguna vez se filtra, cambiadla en Supabase (**Project Settings → API**) y actualizadla aquí y en la web.
+`SUPABASE_SERVICE_ROLE_KEY` es la llave maestra de la base de datos. Solo debe estar en Vercel, en `.env.local` y, si usáis el script de fotos, en sus propiedades. Nunca la peguéis en un documento ni en un correo. Si alguna vez se filtra, cambiadla en Supabase (**Project Settings → API**) y actualizadla en todos esos sitios.

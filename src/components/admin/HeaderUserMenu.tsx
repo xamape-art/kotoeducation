@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { KeyRound, LogOut } from 'lucide-react'
+import { DatabaseBackup, KeyRound, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -58,6 +58,17 @@ export default function HeaderUserMenu({ email }: { email: string }) {
     <div className="flex items-center gap-3">
       <span className="text-muted-foreground text-xs hidden sm:inline">{email}</span>
       <span className="text-border hidden sm:inline">|</span>
+      <Button
+        asChild
+        variant="ghost"
+        size="sm"
+        className="h-8 px-2.5 rounded-lg gap-1.5 text-xs font-medium text-muted-foreground"
+      >
+        <a href="/api/backup/descargar" download title="Descargar una copia de seguridad en Excel">
+          <DatabaseBackup className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Copia</span>
+        </a>
+      </Button>
       <Button
         variant="ghost"
         size="sm"
