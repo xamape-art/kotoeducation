@@ -34,6 +34,7 @@ import {
 import { Plus, Pencil, Trash2, Eye, EyeOff, Upload, Camera, Loader2, ImageIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { alertDbError } from '@/lib/db-error'
+import { trashPath } from '@/lib/photo-trash'
 
 const BUCKET = 'gallery'
 
@@ -223,9 +224,9 @@ export default function GaleriaAdminPage() {
         .eq('id', photo.id)
 
       if (error) throw error
-      // Remove the file once the record is gone, so a failed delete never leaves a broken photo
+      // Move the file to the trash once the record is gone (the nightly backup empties it after 30 days)
       const path = photo.storage_path || photo.url?.split(`/${BUCKET}/`)[1]
-      if (path) await supabase.storage.from(BUCKET).remove([path])
+      if (path) await supabase.storage.from(BUCKET).move(path, trashPath(path))
       setPhotos((prev) => prev.filter((p) => p.id !== photo.id))
     } catch (err) {
       alertDbError(err, 'eliminar')
@@ -462,8 +463,8 @@ export default function GaleriaAdminPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>¿Eliminar foto?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Esta acción no se puede deshacer. La foto se eliminará
-                          del almacenamiento y de la base de datos.
+                          La foto desaparecerá de la galería y de la web. El archivo
+                          se guarda 30 días en la papelera por si fue un error.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

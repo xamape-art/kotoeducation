@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { TRASH_PREFIX, TRASH_DAYS, trashedAt } from '@/lib/photo-trash'
 
 // Spanish sheet names for the known tables; any new table is included with its own name
 const TABLE_LABELS: Record<string, string> = {
@@ -100,6 +101,71 @@ export function backupSummary(data: BackupData) {
   return Object.keys(TABLE_LABELS)
     .filter((t) => t in data)
     .map((t) => `${TABLE_LABELS[t]}: ${data[t].length}`)
+}
+
+// ─── Photos (Storage is not included in Supabase's own backups) ─────────────
+
+export const PHOTO_BUCKET = 'gallery'
+// Gmail accepts up to 25 MB per email; attachments grow ~35% when encoded
+const MAX_EMAIL_BYTES = 17 * 1024 * 1024
+
+type StoredFile = { path: string; createdAt: string; size: number }
+
+async function listFiles(prefix = ''): Promise<StoredFile[]> {
+  const storage = createAdminClient().storage.from(PHOTO_BUCKET)
+  const files: StoredFile[] = []
+  for (let offset = 0; ; offset += 100) {
+    const { data, error } = await storage.list(prefix, { limit: 100, offset, sortBy: { column: 'name', order: 'asc' } })
+    if (error) throw new Error(`Error listando fotos: ${error.message}`)
+    for (const item of data || []) {
+      const path = prefix ? `${prefix}/${item.name}` : item.name
+      if (!item.id) files.push(...(await listFiles(path))) // sub-folder
+      else files.push({ path, createdAt: item.created_at || '', size: Number(item.metadata?.size) || 0 })
+    }
+    if (!data || data.length < 100) return files
+  }
+}
+
+// Photos uploaded since `since`, grouped so each group fits in one email
+export async function newPhotoBatches(since: Date) {
+  const files = (await listFiles()).filter(
+    (f) => !f.path.startsWith(TRASH_PREFIX) && new Date(f.createdAt) > since
+  )
+  const tooBig = files.filter((f) => f.size > MAX_EMAIL_BYTES)
+  const batches: StoredFile[][] = []
+  let current: StoredFile[] = []
+  let currentSize = 0
+  for (const f of files.filter((f) => f.size <= MAX_EMAIL_BYTES)) {
+    if (current.length && currentSize + f.size > MAX_EMAIL_BYTES) {
+      batches.push(current)
+      current = []
+      currentSize = 0
+    }
+    current.push(f)
+    currentSize += f.size
+  }
+  if (current.length) batches.push(current)
+  return { batches, tooBig }
+}
+
+export async function downloadPhoto(path: string) {
+  const { data, error } = await createAdminClient().storage.from(PHOTO_BUCKET).download(path)
+  if (error) throw new Error(`Error descargando ${path}: ${error.message}`)
+  return Buffer.from(await data.arrayBuffer())
+}
+
+// Permanently delete trashed photos older than TRASH_DAYS
+export async function emptyOldTrash() {
+  const limit = Date.now() - TRASH_DAYS * 86400000
+  const old = (await listFiles(TRASH_PREFIX.slice(0, -1))).filter((f) => {
+    const at = trashedAt(f.path.slice(TRASH_PREFIX.length))
+    return at && at.getTime() < limit
+  })
+  if (old.length) {
+    const { error } = await createAdminClient().storage.from(PHOTO_BUCKET).remove(old.map((f) => f.path))
+    if (error) throw new Error(`Error vaciando la papelera: ${error.message}`)
+  }
+  return old.length
 }
 
 export function todayInSpain() {
