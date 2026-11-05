@@ -14,6 +14,7 @@ import { calcTotals, calcTotalsFromGross, formatEuro, formatInvoiceNumber, forma
 import { alertDbError } from '@/lib/db-error'
 import { todayDb } from '@/lib/dates'
 import type { Client, Invoice, Service } from '@/types'
+import AddressFields, { parseAddress, formatAddress, type AddressParts } from '@/components/admin/AddressFields'
 
 const nativeSelect =
   'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
@@ -33,12 +34,14 @@ export default function InvoiceForm({ invoice, initialClientId }: { invoice?: In
 
   const [clients, setClients] = useState<Client[]>([])
   const [services, setServices] = useState<Service[]>([])
+  // Descriptions used in previous invoices, offered as suggestions on each line
+  const [pastConcepts, setPastConcepts] = useState<{ description: string; price: number }[]>([])
   const [saving, setSaving] = useState(false)
 
   const [clientId, setClientId] = useState(invoice?.client_id || '')
   const [clientName, setClientName] = useState(invoice?.client_name || '')
   const [clientNif, setClientNif] = useState(invoice?.client_nif || '')
-  const [clientAddress, setClientAddress] = useState(invoice?.client_address || '')
+  const [address, setAddress] = useState<AddressParts>(() => parseAddress(invoice?.client_address))
   const [date, setDate] = useState(invoice?.date || todayDb())
   const [vatRate, setVatRate] = useState(String(invoice?.vat_rate ?? DEFAULT_VAT_RATE))
   // Tarifas are public prices with IVA included, so the user types final prices by default
@@ -56,13 +59,28 @@ export default function InvoiceForm({ invoice, initialClientId }: { invoice?: In
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: c, error: cErr }, { data: s }] = await Promise.all([
+      const [{ data: c, error: cErr }, { data: s }, { data: past }] = await Promise.all([
         supabase.from('clients').select('*').order('name'),
         supabase.from('services').select('*').eq('active', true).order('name'),
+        supabase.from('invoices').select('items, vat_rate').order('date', { ascending: false }).limit(300),
       ])
       if (cErr) alertDbError(cErr, 'cargar los clientes')
       setClients(c || [])
       setServices(s || [])
+
+      // Most recent use of each description wins; price shown IVA included like the inputs
+      const seen = new Map<string, { description: string; price: number }>()
+      for (const inv of (past || []) as Pick<Invoice, 'items' | 'vat_rate'>[]) {
+        for (const item of inv.items || []) {
+          const key = item.description?.trim().toLowerCase()
+          if (!key || seen.has(key)) continue
+          seen.set(key, {
+            description: item.description.trim(),
+            price: round2(item.unit_price * (1 + Number(inv.vat_rate) / 100)),
+          })
+        }
+      }
+      setPastConcepts([...seen.values()])
 
       // Coming from a client's page: fill in their details
       const preselected = !invoice && initialClientId ? c?.find((cl) => cl.id === initialClientId) : undefined
@@ -70,7 +88,7 @@ export default function InvoiceForm({ invoice, initialClientId }: { invoice?: In
         setClientId(preselected.id)
         setClientName(preselected.name)
         setClientNif(preselected.nif || '')
-        setClientAddress(preselected.address || '')
+        setAddress(parseAddress(preselected.address))
       }
     }
     load()
@@ -100,12 +118,28 @@ export default function InvoiceForm({ invoice, initialClientId }: { invoice?: In
     if (client) {
       setClientName(client.name)
       setClientNif(client.nif || '')
-      setClientAddress(client.address || '')
+      setAddress(parseAddress(client.address))
     }
   }
 
   const updateLine = (index: number, patch: Partial<DraftLine>) => {
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...patch } : l)))
+  }
+
+  // Tarifas first, then past concepts that aren't already a tarifa
+  const conceptOptions = [
+    ...services.map((s) => ({ description: s.name, price: Number(s.price) })),
+    ...pastConcepts.filter((p) => !services.some((s) => s.name.trim().toLowerCase() === p.description.toLowerCase())),
+  ]
+
+  // Picking a known concept fills its usual price if the line has none yet
+  const handleDescriptionChange = (index: number, value: string) => {
+    const match = conceptOptions.find((o) => o.description === value)
+    setLines((prev) =>
+      prev.map((l, i) =>
+        i !== index ? l : { ...l, description: value, price: match && !l.price ? String(match.price) : l.price }
+      )
+    )
   }
 
   const addService = (serviceId: string) => {
@@ -135,7 +169,7 @@ export default function InvoiceForm({ invoice, initialClientId }: { invoice?: In
         client_id: clientId || null,
         client_name: clientName.trim(),
         client_nif: clientNif.trim() || null,
-        client_address: clientAddress.trim() || null,
+        client_address: formatAddress(address),
         items,
         vat_rate: vat,
         subtotal: totals.subtotal,
@@ -241,10 +275,7 @@ export default function InvoiceForm({ invoice, initialClientId }: { invoice?: In
               <Label>DNI / NIF</Label>
               <Input placeholder="Opcional" value={clientNif} onChange={(e) => setClientNif(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label>Dirección</Label>
-              <Input placeholder="Opcional" value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} />
-            </div>
+            <AddressFields value={address} onChange={setAddress} />
           </CardContent>
         </Card>
 
@@ -311,12 +342,21 @@ export default function InvoiceForm({ invoice, initialClientId }: { invoice?: In
             <span className="text-right">Importe</span>
             <span />
           </div>
+          <datalist id="invoice-concepts">
+            {conceptOptions.map((o) => (
+              <option key={o.description} value={o.description}>
+                {formatEuro(o.price)}
+              </option>
+            ))}
+          </datalist>
           {lines.map((line, index) => (
             <div key={index} className="grid grid-cols-[1fr_32px] sm:grid-cols-[1fr_80px_110px_90px_32px] gap-2 items-center border-b sm:border-0 pb-3 sm:pb-0">
               <Input
-                placeholder="Ej. Paseo 60 min (semana 12-16 oct)"
+                list="invoice-concepts"
+                autoComplete="off"
+                placeholder="Elige o escribe un concepto"
                 value={line.description}
-                onChange={(e) => updateLine(index, { description: e.target.value })}
+                onChange={(e) => handleDescriptionChange(index, e.target.value)}
                 className="col-span-1"
               />
               <Button

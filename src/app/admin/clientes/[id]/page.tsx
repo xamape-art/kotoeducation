@@ -26,6 +26,7 @@ import { ArrowLeft, Phone, Mail, MapPin, Dog, Calendar, Edit, Plus, FileText, Tr
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { alertDbError } from '@/lib/db-error'
+import AddressFields, { emptyAddress, formatAddress, parseAddress } from '@/components/admin/AddressFields'
 import { STATUS_LABELS, STATUS_BADGE } from '@/lib/appointments'
 import { formatEuro, formatDate } from '@/lib/invoice'
 
@@ -58,7 +59,7 @@ export default function ClientDetailPage() {
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editEmail, setEditEmail] = useState('')
-  const [editAddress, setEditAddress] = useState('')
+  const [editAddress, setEditAddress] = useState(emptyAddress)
   const [editNif, setEditNif] = useState('')
   const [editNotes, setEditNotes] = useState('')
 
@@ -152,7 +153,7 @@ export default function ClientDetailPage() {
     setEditName(client.name)
     setEditPhone(client.phone || '')
     setEditEmail(client.email || '')
-    setEditAddress(client.address || '')
+    setEditAddress(parseAddress(client.address))
     setEditNif(client.nif || '')
     setEditNotes(client.notes || '')
     setOpenEditClient(true)
@@ -170,7 +171,7 @@ export default function ClientDetailPage() {
           name: editName.trim(),
           phone: editPhone.trim() || null,
           email: editEmail.trim() || null,
-          address: editAddress.trim() || null,
+          address: formatAddress(editAddress),
           nif: editNif.trim().toUpperCase() || null,
           notes: editNotes.trim() || null,
         })
@@ -415,10 +416,10 @@ export default function ClientDetailPage() {
                   <span className="text-muted-foreground italic">Sin teléfono</span>
                 )}
               </div>
-              <div className="flex items-center gap-3">
-                <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex items-start gap-3">
+                <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                 {client.address ? (
-                  <span>{client.address}</span>
+                  <span className="whitespace-pre-line">{client.address}</span>
                 ) : (
                   <span className="text-muted-foreground italic">Sin dirección</span>
                 )}
@@ -629,16 +630,11 @@ export default function ClientDetailPage() {
               <Label>Email</Label>
               <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
             </div>
-            <div className="grid grid-cols-[1fr_140px] gap-3">
-              <div className="space-y-1.5">
-                <Label>Dirección</Label>
-                <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>DNI / NIF</Label>
-                <Input value={editNif} onChange={(e) => setEditNif(e.target.value)} placeholder="Opcional" />
-              </div>
+            <div className="space-y-1.5">
+              <Label>DNI / NIF</Label>
+              <Input value={editNif} onChange={(e) => setEditNif(e.target.value)} placeholder="Opcional" />
             </div>
+            <AddressFields value={editAddress} onChange={setEditAddress} />
             <div className="space-y-1.5">
               <Label>Notas</Label>
               <Textarea placeholder="Notas adicionales..." rows={3} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />

@@ -19,6 +19,7 @@ import { Search, Plus, Phone, Mail, Dog, ChevronRight, Users, Trash2, Loader2 } 
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { alertDbError } from '@/lib/db-error'
+import AddressFields, { emptyAddress, formatAddress } from '@/components/admin/AddressFields'
 
 export default function ClientesPage() {
   const supabase = createClient()
@@ -31,7 +32,7 @@ export default function ClientesPage() {
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
   const [newEmail, setNewEmail] = useState('')
-  const [newAddress, setNewAddress] = useState('')
+  const [newAddress, setNewAddress] = useState(emptyAddress)
   const [newNif, setNewNif] = useState('')
   const [saving, setSaving] = useState(false)
   const [newNotes, setNewNotes] = useState('')
@@ -69,7 +70,7 @@ export default function ClientesPage() {
         name: newName.trim(),
         email: newEmail.trim() || null,
         phone: newPhone.trim() || null,
-        address: newAddress.trim() || null,
+        address: formatAddress(newAddress),
         nif: newNif.trim().toUpperCase() || null,
         notes: newNotes.trim() || null,
       }
@@ -92,7 +93,7 @@ export default function ClientesPage() {
       setNewName('')
       setNewPhone('')
       setNewEmail('')
-      setNewAddress('')
+      setNewAddress(emptyAddress)
       setNewNif('')
       setNewNotes('')
     } catch (err) {
@@ -163,16 +164,11 @@ export default function ClientesPage() {
                 <Label>Email</Label>
                 <Input type="email" placeholder="email@ejemplo.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
               </div>
-              <div className="grid grid-cols-[1fr_140px] gap-3">
-                <div className="space-y-1.5">
-                  <Label>Dirección</Label>
-                  <Input placeholder="Calle, barrio..." value={newAddress} onChange={(e) => setNewAddress(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>DNI / NIF</Label>
-                  <Input placeholder="Opcional" value={newNif} onChange={(e) => setNewNif(e.target.value)} />
-                </div>
+              <div className="space-y-1.5">
+                <Label>DNI / NIF</Label>
+                <Input placeholder="Opcional" value={newNif} onChange={(e) => setNewNif(e.target.value)} />
               </div>
+              <AddressFields value={newAddress} onChange={setNewAddress} />
               <div className="space-y-1.5">
                 <Label>Notas</Label>
                 <Textarea placeholder="Información relevante sobre el cliente..." rows={3} value={newNotes} onChange={(e) => setNewNotes(e.target.value)} />
