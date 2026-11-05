@@ -4,6 +4,7 @@ import { isAdmin } from '@/lib/admin'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import HeaderUserMenu from '@/components/admin/HeaderUserMenu'
 import MobileNav from '@/components/admin/MobileNav'
+import AvisoVersion from '@/components/admin/AvisoVersion'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -30,6 +31,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="print:hidden">
         <MobileNav />
       </div>
+      <AvisoVersion />
     </div>
   )
 }
